@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panel de Administración - Sur Volley{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos para centrar el contenido y dar un fondo agradable */
+    body {
+        background-color: #f4f6fa; /* Un gris claro suave */
+    }
+    .dashboard-container {
+        max-width: 900px;
+        margin-top: 5rem;
+    }
+    .action-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .action-card .icon {
+        font-size: 4rem; /* Icono grande */
+        color: #0a2342; /* Color principal del club */
+    }
+</style>
+{% endblock %}
+
+
+{% block contenido %}
+<!-- Navbar del Dashboard -->
+<nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #0a2342;">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'dashboard' %}">
+            <img src="{% static 'img/logo.png' %}" alt="Sur Volley Club" style="height: 50px;">
+            Panel de Administración
+        </a>
+        <div class="d-flex">
+            <!-- TO DO: Reemplazar '#' con la URL de logout -->
+            <a href="{% url "index" %}" class="btn btn-outline-light">Cerrar Sesión</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Contenido Principal del Dashboard -->
+<div class="container dashboard-container">
+    <div class="text-center mb-5">
+        <h1 class="display-5">Gestión de Usuarios</h1>
+        <p class="lead text-muted">Selecciona una opción para comenzar</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- Tarjeta para Agregar Usuario -->
+        <div class="col-md-5">
+            <a href="{% url "formulario" %}" class="card action-card text-decoration-none shadow-sm h-100">
+                <div class="card-body text-center p-5">
+                    <div class="icon">
+                        <!-- Icono de Bootstrap para agregar usuario -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-person-plus-fill" viewBox="0 0 16 16">
+                            <path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+                            <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
+                        </svg>
+                    </div>
+                    <h3 class="card-title mt-4">Agregar Usuario</h3>
+                    <p class="card-text text-muted">Crear un nuevo perfil en el sistema.</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
