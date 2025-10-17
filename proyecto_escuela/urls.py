@@ -7,4 +7,5 @@ urlpatterns = [
     path('login/', v.login, name='login'),
     path('dashboard/', v.dashboard, name="dashboard"),
     path('formulario/', v.formulario, name="formulario"),
+    path('usuarios/', v.lista_usuarios, name='lista_usuarios'),
 ]

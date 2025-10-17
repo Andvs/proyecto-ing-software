@@ -5,12 +5,11 @@
 
 {% block extra_css %}
 <style>
-    /* Estilos para centrar el contenido y dar un fondo agradable */
     body {
-        background-color: #f4f6fa; /* Un gris claro suave */
+        background-color: #f4f6fa;
     }
     .dashboard-container {
-        max-width: 900px;
+        max-width: 1000px;
         margin-top: 5rem;
     }
     .action-card {
@@ -21,15 +20,13 @@
         box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
     }
     .action-card .icon {
-        font-size: 4rem; /* Icono grande */
-        color: #0a2342; /* Color principal del club */
+        font-size: 4rem;
+        color: #0a2342;
     }
 </style>
 {% endblock %}
 
-
 {% block contenido %}
-<!-- Navbar del Dashboard -->
 <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #0a2342;">
     <div class="container">
         <a class="navbar-brand" href="{% url 'dashboard' %}">
@@ -37,26 +34,28 @@
             Panel de Administración
         </a>
         <div class="d-flex">
-            <!-- TO DO: Reemplazar '#' con la URL de logout -->
-            <a href="{% url "index" %}" class="btn btn-outline-light">Cerrar Sesión</a>
+            <a href="{% url 'index' %}" class="btn btn-outline-light">Cerrar Sesión</a>
         </div>
     </div>
 </nav>
 
-<!-- Contenido Principal del Dashboard -->
 <div class="container dashboard-container">
     <div class="text-center mb-5">
-        <h1 class="display-5">Gestión de Usuarios</h1>
-        <p class="lead text-muted">Selecciona una opción para comenzar</p>
+        <h1 class="display-5">Panel de Gestión</h1>
+        <p class="lead text-muted">Selecciona un módulo para comenzar</p>
     </div>
 
     <div class="row g-4 justify-content-center">
-        <!-- Tarjeta para Agregar Usuario -->
+
+        <!-- === Sección: Gestión de Usuarios === -->
+        <div class="col-12 text-center mb-3">
+            <h3 class="text-primary fw-bold">Gestión de Usuarios</h3>
+        </div>
+
         <div class="col-md-5">
-            <a href="{% url "formulario" %}" class="card action-card text-decoration-none shadow-sm h-100">
+            <a href="{% url 'formulario' %}" class="card action-card text-decoration-none shadow-sm h-100">
                 <div class="card-body text-center p-5">
                     <div class="icon">
-                        <!-- Icono de Bootstrap para agregar usuario -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-person-plus-fill" viewBox="0 0 16 16">
                             <path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
                             <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
@@ -67,6 +66,18 @@
                 </div>
             </a>
         </div>
-    </div>
-</div>
+
+        <div class="col-md-5">
+            <a href="{% url 'lista_usuarios' %}" class="card action-card text-decoration-none shadow-sm h-100">
+                <div class="card-body text-center p-5">
+                    <div class="icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
+                            <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+                        </svg>
+                    </div>
+                    <h3 class="card-title mt-4">Visualizar Usuarios</h3>
+                    <p class="card-text text-muted">Ver y administrar la lista de usuarios existentes.</p>
+                </div>
+            </a>
+        </div>
 {% endblock %}
