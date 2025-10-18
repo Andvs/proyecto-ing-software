@@ -5,16 +5,44 @@ from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
 from .form import *
 from .models import *
+from .decorators import *
 # Create your views here.
 def index(request):
     return render(request,"index.html")
 
 def login(request):
+    if request.method == "POST":
+        nombre_usuario = request.POST.get('nombre_usuario')
+        contraseña_plana = request.POST.get('contraseña')
+        
+        try:
+            usuario = Usuario.objects.get(nombre_usuario=nombre_usuario)
+            
+            # ✅ --- ESTA ES LA LÍNEA CORREGIDA ---
+            # Usamos check_password de Django, que sabe cómo leer el hash de la base de datos.
+            if check_password(contraseña_plana, usuario.contraseña):
+                
+                # Guardamos el ID del usuario en la sesión
+                request.session['usuario_id'] = usuario.id
+                
+                messages.success(request, f"¡Bienvenido, {usuario.nombre_usuario}!")
+                return redirect('dashboard')
+            else:
+                messages.error(request, "La contraseña es incorrecta.")
+
+        except Usuario.DoesNotExist:
+            messages.error(request, "El usuario no existe.")
+        
+        # Si algo falla, redirigimos de nuevo al login
+        return redirect('login')
+
     return render(request, 'login.html')
 
+@rol_requerido(roles_permitidos=['Admin', 'Entrenador', 'Coordinador Deportivo', 'Estudiante'])
 def dashboard(request):
     return render(request,"dashboard.html")
 
+@rol_requerido(roles_permitidos=['Admin'])
 def formulario(request):
     if request.method == "POST":
         form = UsuarioForm(request.POST)
@@ -29,7 +57,9 @@ def formulario(request):
         form = UsuarioForm()
     return render(request, "usuarios/formulario.html", {"form": form})
 
+@rol_requerido(roles_permitidos=['Admin'])
 def lista_usuarios(request):
+    roles = Rol.objects.all()
     query = request.GET.get('q')
     usuarios_list = Usuario.objects.all().order_by('id')
     if query:

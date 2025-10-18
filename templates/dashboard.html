@@ -30,7 +30,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #0a2342;">
     <div class="container">
         <a class="navbar-brand" href="{% url 'dashboard' %}">
-            <img src="{% static 'img/logo.png' %}" alt="Sur Volley Club" style="height: 50px;">
+            <img src="{% static 'img/logo.png' %}" alt="Escuela San Salvador" style="height: 50px;">
             Panel de Administración
         </a>
         <div class="d-flex">
@@ -41,17 +41,21 @@
 
 <div class="container dashboard-container">
     <div class="text-center mb-5">
-        <h1 class="display-5">Panel de Gestión</h1>
-        <p class="lead text-muted">Selecciona un módulo para comenzar</p>
+        {% if user and user.rol.nombre == 'Admin' %}
+            <h1 class="display-5">Panel de Gestión</h1>
+            <p class="lead text-muted">Selecciona un módulo para comenzar</p>
+        {% endif %}
     </div>
 
     <div class="row g-4 justify-content-center">
 
         <!-- === Sección: Gestión de Usuarios === -->
         <div class="col-12 text-center mb-3">
-            <h3 class="text-primary fw-bold">Gestión de Usuarios</h3>
+            {% if user and user.rol.nombre == 'Admin' %}
+                <h3 class="text-primary fw-bold">Gestión de Usuarios</h3>
+            {% endif %}
         </div>
-
+    {% if user and user.rol.nombre == 'Admin' %}
         <div class="col-md-5">
             <a href="{% url 'formulario' %}" class="card action-card text-decoration-none shadow-sm h-100">
                 <div class="card-body text-center p-5">
@@ -66,7 +70,8 @@
                 </div>
             </a>
         </div>
-
+    {% endif %}
+    {% if user and user.rol.nombre == 'Admin' %}
         <div class="col-md-5">
             <a href="{% url 'lista_usuarios' %}" class="card action-card text-decoration-none shadow-sm h-100">
                 <div class="card-body text-center p-5">
@@ -80,4 +85,5 @@
                 </div>
             </a>
         </div>
+    {% endif %}
 {% endblock %}

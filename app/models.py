@@ -3,13 +3,11 @@ from django.conf import settings
 from django_mysql.models import EnumField  
 from django.core.validators import MinLengthValidator, MaxLengthValidator, RegexValidator
 
-# Validador para contraseñas seguras
 validar_contraseña = RegexValidator(
     regex=r'^(?=.*[A-Z])(?=.*[a-z]).*$',
     message='La contraseña debe tener al menos una letra mayúscula y una minúscula.'
 )
 
-# Validador: nombre solo con letras, espacios o guiones (sin números)
 solo_letras = RegexValidator(
     regex=r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s-]+$',
     message='El nombre de usuario solo puede contener letras, espacios o guiones.'
@@ -34,17 +32,12 @@ class Permiso(models.Model):
         return self.nombre
 
 class Usuario(models.Model):
-    nombre_usuario = models.CharField(max_length=50, unique=True, validators=[MinLengthValidator(3), solo_letras])
+    nombre_usuario = models.CharField(max_length=50, unique=True)
     contraseña = models.CharField(max_length=128)
     activo = models.BooleanField(default=True)
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT)
     def __str__(self):
         return self.nombre_usuario
-    # Garantiza que SIEMPRE se apliquen las validaciones del modelo
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
-
 class PermisoRol(models.Model):
     permiso = models.ForeignKey(Permiso, on_delete=models.CASCADE)
     rol = models.ForeignKey(Rol, on_delete=models.CASCADE)
@@ -52,7 +45,6 @@ class PermisoRol(models.Model):
         unique_together = ('permiso', 'rol')
 
 class Disciplina(models.Model):
-    # ENUM real en MySQL (con etiquetas legibles)
     NOMBRES = (
         ("FUTBOL", "Fútbol"),
         ("BASQUETBOL", "Básquetbol"),
