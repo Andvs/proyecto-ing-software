@@ -43,7 +43,7 @@
                     </td>
                     <td>{{ u.rol }}</td>
                         <td>
-                            <a href="" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            <a href="{% url "editar_usuario" u.id %}" class="btn btn-sm btn-outline-secondary">Editar</a>
                             <button type="button" class="btn btn-sm btn-outline-danger"
                                     data-bs-toggle="modal"
                                     data-bs-target="#confirmarDesabilitarModal"

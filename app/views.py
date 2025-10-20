@@ -3,9 +3,10 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password, check_password
-from .form import *
+from .forms import *
 from .models import *
 from .decorators import *
+
 # Create your views here.
 def index(request):
     return render(request,"index.html")
@@ -38,11 +39,15 @@ def login(request):
 
     return render(request, 'login.html')
 
-@rol_requerido(roles_permitidos=['Admin', 'Entrenador', 'Coordinador Deportivo', 'Estudiante'])
+# SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
+# DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
+#@rol_requerido(roles_permitidos=['Admin', 'Entrenador', 'Coordinador Deportivo', 'Estudiante'])
 def dashboard(request):
     return render(request,"dashboard.html")
 
-@rol_requerido(roles_permitidos=['Admin'])
+# SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
+# DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
+#@rol_requerido(roles_permitidos=['Admin'])
 def formulario(request):
     if request.method == "POST":
         form = UsuarioForm(request.POST)
@@ -57,7 +62,9 @@ def formulario(request):
         form = UsuarioForm()
     return render(request, "usuarios/formulario.html", {"form": form})
 
-@rol_requerido(roles_permitidos=['Admin'])
+# SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
+# DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
+#@rol_requerido(roles_permitidos=['Admin'])
 def lista_usuarios(request):
     roles = Rol.objects.all()
     query = request.GET.get('q')
@@ -99,3 +106,19 @@ def lista_usuarios(request):
         'search_query': query,
     }
     return render(request, 'usuarios/lista.html', context)
+
+def editarUsuario(request, usuario_id):
+    usuario = get_object_or_404(Usuario, pk=usuario_id)
+    if request.method == 'POST':
+        form = UsuarioEditForm(request.POST, instance=usuario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'¡Usuario "{usuario.nombre_usuario}" actualizado correctamente!')
+            return redirect('lista_usuarios')
+    else:
+        form = UsuarioEditForm(instance=usuario)
+    context = {
+        'form': form,
+        'usuario': usuario,
+    }
+    return render(request, 'usuarios/editar.html', context)

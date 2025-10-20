@@ -38,6 +38,7 @@ class Usuario(models.Model):
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT)
     def __str__(self):
         return self.nombre_usuario
+
 class PermisoRol(models.Model):
     permiso = models.ForeignKey(Permiso, on_delete=models.CASCADE)
     rol = models.ForeignKey(Rol, on_delete=models.CASCADE)

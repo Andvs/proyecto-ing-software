@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Inicio - Escuela San Salvador{% endblock %}
+{% block titulo %}Inicio{% endblock %}
 
 {% block contenido %}
 
@@ -18,13 +18,16 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav mx-auto">
                 <li class="nav-item"><a class="nav-link" href="#">Inicio</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">Campeonatos</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">Patrocinadores</a></li>
+                <li class="nav-item"><a class="nav-link" href="#">Calendario</a></li>
                 <li class="nav-item"><a class="nav-link" href="#">Logros</a></li>
+                <li class="nav-item"><a class="nav-link" href="#">Sobre Nosotros</a></li>
             </ul>
             
             <div class="d-flex">
+                {% comment "SE COMENTA LA LINEA DE FORMA TEMPORAL PARA TESTING" %}
                 <a href="{% url 'login' %}" class="btn btn-primary d-none d-lg-block">
+                {% endcomment %}
+                <a href="{% url 'lista_usuarios' %}" class="btn btn-primary d-none d-lg-block">
                     <img src="{% static 'img/user_icon.png' %}" alt="Usuario" style="width: 25px; border-radius: 50%;"> Iniciar Sesión
                 </a>
                 <a href="{% url 'login' %}" class="d-lg-none text-white text-decoration-none mt-3">Iniciar Sesión</a>

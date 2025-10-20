@@ -8,4 +8,5 @@ urlpatterns = [
     path('dashboard/', v.dashboard, name="dashboard"),
     path('formulario/', v.formulario, name="formulario"),
     path('usuarios/', v.lista_usuarios, name='lista_usuarios'),
+    path('usuarios/editar/<int:usuario_id>/', v.editarUsuario, name='editar_usuario'),
 ]
