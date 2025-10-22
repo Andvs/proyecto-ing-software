@@ -41,13 +41,13 @@ def login(request):
 
 # SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
 # DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
-#@rol_requerido(roles_permitidos=['Admin', 'Entrenador', 'Coordinador Deportivo', 'Estudiante'])
+@rol_requerido(roles_permitidos=['Admin', 'Entrenador', 'Coordinador Deportivo', 'Estudiante'])
 def dashboard(request):
     return render(request,"dashboard.html")
 
 # SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
 # DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
-#@rol_requerido(roles_permitidos=['Admin'])
+@rol_requerido(roles_permitidos=['Admin'])
 def formulario(request):
     if request.method == "POST":
         form = UsuarioForm(request.POST)
@@ -62,9 +62,8 @@ def formulario(request):
         form = UsuarioForm()
     return render(request, "usuarios/formulario.html", {"form": form})
 
-# SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
-# DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
-#@rol_requerido(roles_permitidos=['Admin'])
+
+@rol_requerido(roles_permitidos=['Admin'])
 def lista_usuarios(request):
     roles = Rol.objects.all()
     query = request.GET.get('q')
@@ -107,6 +106,7 @@ def lista_usuarios(request):
     }
     return render(request, 'usuarios/lista.html', context)
 
+@rol_requerido(roles_permitidos=['Admin'])
 def editarUsuario(request, usuario_id):
     usuario = get_object_or_404(Usuario, pk=usuario_id)
     if request.method == 'POST':

@@ -24,10 +24,7 @@
             </ul>
             
             <div class="d-flex">
-                {% comment "SE COMENTA LA LINEA DE FORMA TEMPORAL PARA TESTING" %}
                 <a href="{% url 'login' %}" class="btn btn-primary d-none d-lg-block">
-                {% endcomment %}
-                <a href="{% url 'lista_usuarios' %}" class="btn btn-primary d-none d-lg-block">
                     <img src="{% static 'img/user_icon.png' %}" alt="Usuario" style="width: 25px; border-radius: 50%;"> Iniciar Sesión
                 </a>
                 <a href="{% url 'login' %}" class="d-lg-none text-white text-decoration-none mt-3">Iniciar Sesión</a>
