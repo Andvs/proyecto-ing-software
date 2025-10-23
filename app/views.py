@@ -113,6 +113,7 @@ def editarUsuario(request, usuario_id):
         form = UsuarioEditForm(request.POST, instance=usuario)
         if form.is_valid():
             form.save()
+            messages.success(request,f"¡Usuario '{usuario.nombre_usuario}' su rol fue cambiado con exito! por '{usuario.rol}'")
             messages.success(request, f'¡Usuario "{usuario.nombre_usuario}" actualizado correctamente!')
             return redirect('lista_usuarios')
     else:
