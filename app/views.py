@@ -111,6 +111,8 @@ def editarUsuario(request, usuario_id):
     usuario = get_object_or_404(Usuario, pk=usuario_id)
     if request.method == 'POST':
         form = UsuarioEditForm(request.POST, instance=usuario)
+        if form.errors:
+            messages.error(request,f"Ese nombre de Usuario ya exite")
         if form.is_valid():
             form.save()
             messages.success(request,f"¡Usuario '{usuario.nombre_usuario}' su rol fue cambiado con exito! por '{usuario.rol}'")
