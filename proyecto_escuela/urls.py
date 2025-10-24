@@ -9,4 +9,5 @@ urlpatterns = [
     path('formulario/', v.formulario, name="formulario"),
     path('usuarios/', v.lista_usuarios, name='lista_usuarios'),
     path('usuarios/editar/<int:usuario_id>/', v.editarUsuario, name='editar_usuario'),
+    path("usuarios/<int:pk>/toggle-activo/", v.deshabilitar_usuario, name="deshabilitar_usuario"),
 ]

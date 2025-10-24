@@ -6,6 +6,8 @@ from django.contrib.auth.hashers import make_password, check_password
 from .forms import *
 from .models import *
 from .decorators import *
+from django.views.decorators.http import require_POST
+from django.urls import reverse
 
 # Create your views here.
 def index(request):
@@ -125,3 +127,19 @@ def editarUsuario(request, usuario_id):
         'usuario': usuario,
     }
     return render(request, 'usuarios/editar.html', context)
+
+@require_POST
+def deshabilitar_usuario(request, pk):
+    """
+    Alterna el booleano 'activo' del Usuario (modelo propio).
+    No elimina, solo habilita/deshabilita. Vuelve a la misma página.
+    """
+    usuario = get_object_or_404(Usuario, pk=pk)
+    usuario.activo = not usuario.activo
+    usuario.save(update_fields=["activo"])
+
+    nombre = getattr(usuario, "nombre_usuario", str(usuario))
+    estado = "habilitado" if usuario.activo else "deshabilitado"
+    messages.success(request, f'El usuario «{nombre}» fue {estado} correctamente.')
+
+    return redirect(request.POST.get("next") or reverse("lista_usuarios"))

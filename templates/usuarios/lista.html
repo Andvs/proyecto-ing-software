@@ -44,12 +44,13 @@
                     <td>{{ u.rol }}</td>
                         <td>
                             <a href="{% url "editar_usuario" u.id %}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                            <button type="button" class="btn btn-sm btn-outline-danger"
+                            <button type="button" class="btn btn-sm {% if u.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
                                     data-bs-toggle="modal"
                                     data-bs-target="#confirmarDesabilitarModal"
                                     data-user-id="{{ u.id }}"
-                                    data-user-name="{{ u.nombre_usuario }}">
-                                Deshabilitar
+                                    data-user-name="{{ u.nombre_usuario }}"
+                                    data-user-active="{{ u.activo|yesno:'true,false' }}">
+                                {% if u.activo %}Deshabilitar{% else %}Habilitar{% endif %}
                             </button>
                         </td>
                     </tr>
@@ -128,23 +129,38 @@
         </div>
     </div>
 </div>
+<form id="formToggleUsuario" method="post" action="" style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+</form>
 <script>
-    const confirmarDesabilitarModal = document.getElementById('confirmarDesabilitarModal');
+  const modal = document.getElementById('confirmarDesabilitarModal');
+  const form = document.getElementById('formToggleUsuario');
+  const modalText = modal.querySelector('#modal-text');
+  const confirmarBtn = modal.querySelector('#confirmar-btn');
 
-    confirmarDesabilitarModal.addEventListener('show.bs.modal', function (event) {
+  // URL base con un ID dummy que reemplazaremos por JS
+  const baseAction = "{% url 'deshabilitar_usuario' 0 %}"; // requiere la ruta con int:pk
+
+  modal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     const userId = button.getAttribute('data-user-id');
     const userName = button.getAttribute('data-user-name');
+    const isActive = button.getAttribute('data-user-active') === 'true';
 
-    const modalText = confirmarDesabilitarModal.querySelector('#modal-text');
-    modalText.textContent = `¿Seguro que deseas deshabilitar a "${userName}"?`;
+    // Texto del modal según estado actual
+    const accion = isActive ? 'deshabilitar' : 'habilitar';
+    modalText.textContent = `¿Seguro que deseas ${accion} a "${userName}"?`;
 
-    const confirmarBtn = confirmarDesabilitarModal.querySelector('#confirmar-btn');
-    
-    // Creamos la URL dinámicamente. 
-    // ¡Asegúrate de que el 'name' en tu urls.py sea 'desabilitar_usuario'!
-    const url = "".replace('0', userId);
-    confirmarBtn.href = url;
-    });
-    </script>
+    // Seteamos la acción del form oculto
+    form.action = baseAction.replace('/0/', `/${userId}/`);
+
+    // Hacemos que el botón "Aceptar" envíe el POST en lugar de navegar
+    confirmarBtn.onclick = function (e) {
+      e.preventDefault();
+      form.submit();
+    };
+  });
+</script>
+
 {% endblock contenido %}
