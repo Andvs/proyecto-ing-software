@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="container py-4">
+    <h2 class="mb-1">Resumen de Asistencia — {{ actividad.nombre }}</h2>
+    <p class="text-muted">Disciplina: <strong>{{ actividad.disciplina }}</strong></p>
+    <div class="card p-3 shadow-sm">
+        <ul class="list-group list-group-flush">
+        {% for a in registros %}
+        <li class="list-group-item d-flex justify-content-between">
+            <span>{{ a.estudiante_nombre }}</span>
+            <span class="badge {{ 'text-bg-success' if a.estado == 'PRESENTE' else 'text-bg-danger' }}">{{ a.get_estado_display }}</span>
+        </li>
+        {% empty %}
+        <li class="list-group-item">Sin registros aún.</li>
+        {% endfor %}
+        </ul>
+    </div>
+    <a class="btn btn-outline-secondary mt-3" href="{% url 'asistencia_marcar' actividad.id %}">Editar</a>
+</div>
+{% endblock %}

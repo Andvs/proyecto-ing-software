@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Seleccionar Actividad{% endblock %}
+{% block contenido %}
+<div class="container py-4">
+    <h2 class="mb-4">Toma de Asistencia</h2>
+    <form method="get" class="card p-4 shadow-sm">
+        <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Disciplina</label>
+            {{ form.disciplina }}
+        </div>
+        <div class="col-md-8">
+            <label class="form-label">Actividad deportiva</label>
+            {{ form.actividad }}
+        </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            Volver
+        </a>
+        <button class="btn btn-primary" type="submit">
+            Continuar
+        </button>
+        </div>
+    </form>
+</div>
+{% endblock contenido %}

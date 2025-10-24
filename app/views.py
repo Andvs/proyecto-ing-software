@@ -8,6 +8,9 @@ from .models import *
 from .decorators import *
 from django.views.decorators.http import require_POST
 from django.urls import reverse
+from django.db import transaction
+from django.forms import formset_factory
+from django.utils import timezone
 
 # Create your views here.
 def index(request):
@@ -143,3 +146,107 @@ def deshabilitar_usuario(request, pk):
     messages.success(request, f'El usuario «{nombre}» fue {estado} correctamente.')
 
     return redirect(request.POST.get("next") or reverse("lista_usuarios"))
+
+
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+def asistencia_index(request):
+    form = SeleccionarActividadForm(request.GET or None)
+
+    # Si hay parámetros (el usuario pulsó Continuar), valida
+    if request.GET:
+        if form.is_valid():
+            actividad = form.cleaned_data['actividad']
+            return redirect('asistencia_marcar', actividad_id=actividad.id)
+        # si no es válido, cae a render con errores
+
+    return render(request, 'asistencia/seleccionar.html', {'form': form})
+
+
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+def asistencia_marcar(request, actividad_id):
+    """
+    Paso 2: tabla de jugadores de la disciplina de la actividad con radios Presente/Ausente.
+    Requiere marcar TODOS (el formset obliga 'estado' requerido).
+    """
+    actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
+    disciplina = actividad.disciplina
+
+    # Jugadores correspondientes a la disciplina (y activos)
+    # Usamos Rendimiento como vínculo Estudiante-Disciplina
+    estudiantes = (Estudiante.objects
+                .filter(activo=True, rendimiento__disciplina=disciplina)
+                .distinct()
+                .order_by('apellido', 'nombre'))
+
+    # Si no hay vínculo rendimiento/disciplinas aún, podrías optar por:
+    # estudiantes = Estudiante.objects.filter(activo=True).order_by('apellido','nombre')
+
+    # QUIÉN MARCA: tomamos el Usuario (tu modelo propio) desde la sesión
+    usuario_id = request.session.get('usuario_id')
+    usuario = Usuario.objects.filter(pk=usuario_id).first()
+    marcador = usuario.nombre_usuario if usuario else "Desconocido"
+
+    initial = [
+        {
+            'estudiante_id': e.id,
+            'alumno': f"{e.apellido}, {e.nombre}",
+        }
+        for e in estudiantes
+    ]
+
+    Formset = AsistenciaFormSet
+    if request.method == 'POST':
+        formset = Formset(request.POST, initial=initial)
+        if formset.is_valid():
+            # Validar que todos tengan estado (el campo es required)
+            faltantes = [f for f in formset if not f.cleaned_data.get('estado')]
+            if faltantes:
+                messages.error(request, "Debes marcar Presente/Ausente para todos los jugadores.")
+            else:
+                with transaction.atomic():
+                    registros = []
+                    for f in formset:
+                        est_id = f.cleaned_data['estudiante_id']
+                        estado = f.cleaned_data['estado']
+                        est = Estudiante.objects.filter(pk=est_id).first()
+
+                        # upsert por (estudiante, actividad)
+                        obj, _created = Asistencia.objects.update_or_create(
+                            estudiante=est,
+                            actividad_deportiva=actividad,
+                            defaults={
+                                'estado': estado,
+                                'fecha_hora_marcaje': timezone.now(),
+                                'estudiante_nombre': f"{est.nombre} {est.apellido}" if est else "",
+                                # Si luego conectas Entrenador real, rellenas el FK.
+                                'entrenador': None,
+                                'entrenador_nombre': marcador,
+                            }
+                        )
+                        registros.append(obj)
+                messages.success(request, f"Asistencia guardada para {len(registros)} jugadores. Marcada por {marcador}.")
+                return redirect('asistencia_resumen', actividad_id=actividad.id)
+        else:
+            messages.error(request, "Corrige los errores del formulario.")
+    else:
+        formset = Formset(initial=initial)
+
+    contexto = {
+        'actividad': actividad,
+        'disciplina': disciplina,
+        'formset': formset,
+        'marcador': marcador,
+    }
+    return render(request, 'asistencia/marcar.html', contexto)
+
+
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+def asistencia_resumen(request, actividad_id):
+    actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
+    registros = (Asistencia.objects
+                .filter(actividad_deportiva=actividad)
+                .select_related('estudiante'))
+    return render(request, 'asistencia/resumen.html', {
+        'actividad': actividad,
+        'registros': registros,
+    })

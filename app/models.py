@@ -133,19 +133,37 @@ class ActividadDeportiva(models.Model):
 
 
 class Asistencia(models.Model):
-    fecha_hora_marcaje = models.DateTimeField()
-    estudiante = models.ForeignKey("Estudiante",
-                                    on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name="asistencias")
+    ESTADOS = (
+        ("PRESENTE", "Presente"),
+        ("AUSENTE", "Ausente"),
+    )
+
+    fecha_hora_marcaje = models.DateTimeField(auto_now_add=True)
+    estudiante = models.ForeignKey(
+        "Estudiante",
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="asistencias"
+    )
     estudiante_nombre = models.CharField(max_length=120, blank=True)
-    entrenador = models.ForeignKey("Entrenador",
-                                    on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name="asistencias_marcadas")
+
+    entrenador = models.ForeignKey(
+        "Entrenador",
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="asistencias_marcadas"
+    )
     entrenador_nombre = models.CharField(max_length=120, blank=True)
-    actividad_deportiva = models.ForeignKey("ActividadDeportiva",
-                                            on_delete=models.PROTECT,
-                                            related_name="asistencias")
+
+    actividad_deportiva = models.ForeignKey(
+        "ActividadDeportiva",
+        on_delete=models.PROTECT,
+        related_name="asistencias"
+    )
+
+    estado = models.CharField(max_length=10, choices=ESTADOS)
     anotaciones = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        unique_together = ("estudiante", "actividad_deportiva")  # 1 registro por alumno x actividad
 
     def __str__(self):
         est = self.estudiante_nombre or (str(self.estudiante) if self.estudiante else "Estudiante eliminado")

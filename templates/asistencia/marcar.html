@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block contenido %}
+<div class="container py-4">
+    <h2 class="mb-1">Asistencia — {{ actividad.nombre }}</h2>
+    <p class="text-muted mb-4">
+        Disciplina: <strong>{{ disciplina }}</strong> · Marca: <strong>{{ marcador }}</strong>
+    </p>
+
+    <form method="post" class="card p-3 shadow-sm">
+    {% csrf_token %}
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+            <tr>
+                <th>Alumno</th>
+                <th class="text-center">Presente</th>
+                <th class="text-center">Ausente</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for f in formset %}
+            <tr>
+                <td>
+                {{ f.estudiante_id }} 
+                {{ f.alumno }}
+                </td>
+                <td class="text-center">
+                <input type="radio" name="{{ f.estado.html_name }}" value="PRESENTE" class="form-check-input" required>
+                </td>
+                <td class="text-center">
+                <input type="radio" name="{{ f.estado.html_name }}" value="AUSENTE" class="form-check-input" required>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+
+        <div class="d-flex gap-2">
+        <a href="{% url 'asistencia_index' %}" class="btn btn-outline-secondary">Volver</a>
+        <button class="btn btn-success">Guardar asistencia</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

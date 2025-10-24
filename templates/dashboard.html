@@ -33,7 +33,10 @@
             <img src="{% static 'img/logo.png' %}" alt="Escuela San Salvador" style="height: 50px;">
             Panel de Administración
         </a>
-        <div class="d-flex">
+        <div class="d-flex align-items-center gap-2">
+            {% if user and user.rol.nombre in 'Entrenador Admin' %}
+                <a href="{% url 'asistencia_index' %}" class="btn btn-light text-primary fw-semibold">Asistencia</a>
+            {% endif %}
             <a href="{% url 'index' %}" class="btn btn-outline-light">Cerrar Sesión</a>
         </div>
     </div>
@@ -44,18 +47,22 @@
         {% if user and user.rol.nombre == 'Admin' %}
             <h1 class="display-5">Panel de Gestión</h1>
             <p class="lead text-muted">Selecciona un módulo para comenzar</p>
+        {% elif user and user.rol.nombre == 'Entrenador' %}
+            <h1 class="display-5">Panel del Entrenador</h1>
+            <p class="lead text-muted">Accede a tus módulos de asistencia y gestión deportiva</p>
         {% endif %}
     </div>
 
     <div class="row g-4 justify-content-center">
 
-        <!-- === Sección: Gestión de Usuarios === -->
+        <!-- === Sección: Gestión de Usuarios (solo Admin) === -->
         <div class="col-12 text-center mb-3">
             {% if user and user.rol.nombre == 'Admin' %}
                 <h3 class="text-primary fw-bold">Gestión de Usuarios</h3>
             {% endif %}
         </div>
-    {% if user and user.rol.nombre == 'Admin' %}
+
+        {% if user and user.rol.nombre == 'Admin' %}
         <div class="col-md-5">
             <a href="{% url 'formulario' %}" class="card action-card text-decoration-none shadow-sm h-100">
                 <div class="card-body text-center p-5">
@@ -70,8 +77,9 @@
                 </div>
             </a>
         </div>
-    {% endif %}
-    {% if user and user.rol.nombre == 'Admin' %}
+        {% endif %}
+
+        {% if user and user.rol.nombre == 'Admin' %}
         <div class="col-md-5">
             <a href="{% url 'lista_usuarios' %}" class="card action-card text-decoration-none shadow-sm h-100">
                 <div class="card-body text-center p-5">
@@ -85,5 +93,28 @@
                 </div>
             </a>
         </div>
-    {% endif %}
+        {% endif %}
+
+        <!-- === Sección: Asistencia (Entrenador o Admin) === -->
+        {% if user and user.rol.nombre in 'Entrenador Admin' %}
+        <div class="col-12 text-center mb-3 mt-5">
+            <h3 class="text-success fw-bold">Gestión de Asistencia</h3>
+        </div>
+        <div class="col-md-5">
+            <a href="{% url 'asistencia_index' %}" class="card action-card text-decoration-none shadow-sm h-100">
+                <div class="card-body text-center p-5">
+                    <div class="icon text-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-clipboard-check" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M10.854 6.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 8.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                            <path d="M9.5 1a.5.5 0 0 1 .5.5V2h1a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h1v-.5a.5.5 0 0 1 .5-.5h3zM5 3v10h6V3H5z"/>
+                        </svg>
+                    </div>
+                    <h3 class="card-title mt-4">Registrar Asistencia</h3>
+                    <p class="card-text text-muted">Marca presentes y ausentes para tus jugadores.</p>
+                </div>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}
