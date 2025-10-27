@@ -1,252 +1,319 @@
+# usuarios/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.contrib import messages
-from django.contrib.auth.hashers import make_password, check_password
-from .forms import *
-from .models import *
-from .decorators import *
 from django.views.decorators.http import require_POST
 from django.urls import reverse
 from django.db import transaction
-from django.forms import formset_factory
 from django.utils import timezone
 
-# Create your views here.
+
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth.decorators import login_required
+
+# Formularios
+from .forms import (
+    UserForm, PerfilForm, EstudianteForm,
+    SeleccionarActividadForm, MarcarAsistenciaForm
+)
+
+# Modelos
+from .models import ActividadDeportiva, Asistencia, Estudiante, Perfil, Disciplina, Inscripcion
+
+# Decorador
+from .decorators import rol_requerido
+
+
+# ============== PÚBLICAS / AUTH ==============
 def index(request):
-    return render(request,"index.html")
+    return render(request, "index.html")
 
-def login(request):
+
+def login_view(request):
+    """
+    Login usando auth de Django + chequeo de Perfil.activo.
+    Espera en el form: username, password.
+    """
     if request.method == "POST":
-        nombre_usuario = request.POST.get('nombre_usuario')
-        contraseña_plana = request.POST.get('contraseña')
-        
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            messages.error(request, "Usuario o contraseña inválidos.")
+            return redirect("login")
+
+        # Chequeo Perfil.activo (si existe Perfil)
         try:
-            usuario = Usuario.objects.get(nombre_usuario=nombre_usuario)
-            
-            # ✅ --- ESTA ES LA LÍNEA CORREGIDA ---
-            # Usamos check_password de Django, que sabe cómo leer el hash de la base de datos.
-            if check_password(contraseña_plana, usuario.contraseña):
-                
-                # Guardamos el ID del usuario en la sesión
-                request.session['usuario_id'] = usuario.id
-                
-                messages.success(request, f"¡Bienvenido, {usuario.nombre_usuario}!")
-                return redirect('dashboard')
-            else:
-                messages.error(request, "La contraseña es incorrecta.")
+            perfil = user.perfil
+            if not perfil.activo:
+                messages.error(request, "Tu cuenta está deshabilitada. Contacta a un administrador.")
+                return redirect("login")
+        except Perfil.DoesNotExist:
+            pass
 
-        except Usuario.DoesNotExist:
-            messages.error(request, "El usuario no existe.")
-        
-        # Si algo falla, redirigimos de nuevo al login
-        return redirect('login')
+        auth_login(request, user)
+        messages.success(request, f"¡Bienvenido, {user.get_full_name() or user.username}!")
+        return redirect("dashboard")
 
-    return render(request, 'login.html')
+    return render(request, "login.html")
 
-# SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
-# DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
+
+@login_required
+def logout_view(request):
+    auth_logout(request)
+    messages.info(request, "Sesión cerrada correctamente.")
+    return redirect("login")
+
+
+# ============== PRIVADAS (DASHBOARD + USUARIOS) ==============
 @rol_requerido(roles_permitidos=['Admin', 'Entrenador', 'Coordinador Deportivo', 'Estudiante'])
 def dashboard(request):
-    return render(request,"dashboard.html")
+    return render(request, "dashboard.html")
 
-# SE COMENTÓ LA LINEA DE FORMA TEMPORAL PARA TESTING
-# DEBIDO A LA CARENCIA DE USUARIO Y ROLES PRECARGADOS EN LA BASE - Cam-99
+
 @rol_requerido(roles_permitidos=['Admin'])
-def formulario(request):
-    if request.method == "POST":
-        form = UsuarioForm(request.POST)
-        if form.is_valid():
-            usuario = form.save(commit=False)
-            contraseña_plana = form.cleaned_data['contraseña']
-            usuario.contraseña = make_password(contraseña_plana)
-            usuario.save()
-            messages.success(request, "Usuario creado correctamente")
-            return redirect("formulario")
+def registrar_usuario(request):
+    if request.method == 'POST':
+        # Botón "Cancelar"
+        if request.POST.get('cancelar'):
+            return redirect('dashboard')
+
+        user_form   = UserForm(request.POST)
+        perfil_form = PerfilForm(request.POST)
+        est_form    = EstudianteForm(request.POST)
+
+        user_ok   = user_form.is_valid()
+        perfil_ok = perfil_form.is_valid()
+
+        # ¿Rol = Estudiante?
+        rol_es_estudiante = False
+        if perfil_ok:
+            rol_sel = perfil_form.cleaned_data.get('rol')
+            if rol_sel and getattr(rol_sel, "nombre", "").strip().lower() == 'estudiante':
+                rol_es_estudiante = True
+
+        est_ok = (not rol_es_estudiante) or est_form.is_valid()
+
+        if user_ok and perfil_ok and est_ok:
+            with transaction.atomic():
+                # 1) User
+                user = user_form.save(commit=False)
+                raw_password = user.password
+                user.set_password(raw_password)
+                user.save()
+
+                # 2) Perfil
+                perfil = perfil_form.save(commit=False)
+                perfil.user = user
+                perfil.save()
+
+                # 3) Estudiante (opcional)
+                if rol_es_estudiante:
+                    Estudiante.objects.update_or_create(
+                        perfil=perfil,
+                        defaults={
+                            'curso': est_form.cleaned_data['curso'],
+                            'fecha_ingreso': est_form.cleaned_data['fecha_ingreso'],
+                        },
+                    )
+
+            messages.success(request, "Usuario registrado correctamente.")
+            return redirect('lista_usuarios')
+        else:
+            messages.error(request, "Revisa los datos del formulario.")
     else:
-        form = UsuarioForm()
-    return render(request, "usuarios/formulario.html", {"form": form})
+        user_form   = UserForm()
+        perfil_form = PerfilForm()
+        est_form    = EstudianteForm()
+
+    return render(request, 'usuarios/registrar.html', {
+        'user_form': user_form,
+        'perfil_form': perfil_form,
+        'est_form': est_form,
+    })
 
 
 @rol_requerido(roles_permitidos=['Admin'])
 def lista_usuarios(request):
-    roles = Rol.objects.all()
-    query = request.GET.get('q')
-    usuarios_list = Usuario.objects.all().order_by('id')
-    if query:
-        # Consulta base para los campos de texto
-        text_query = (
-            Q(nombre_usuario__icontains=query) |
-            Q(rol__nombre__icontains=query) # Asumiendo que 'rol' tiene un campo 'nombre'
+    """
+    Listado con búsqueda por username/nombre/apellido/run/rol
+    y filtro por activo/inactivo (palabras naturales).
+    """
+    q = (request.GET.get("q") or "").strip()
+
+    perfiles = Perfil.objects.select_related("user", "rol").order_by("user__username")
+
+    if q:
+        q_lower = q.lower()
+        palabras_activo = {"si", "sí", "true", "1", "activo", "activos"}
+        palabras_inactivo = {"no", "false", "0", "inactivo", "inactivos"}
+
+        text_q = (
+            Q(user__username__icontains=q) |
+            Q(user__first_name__icontains=q) |
+            Q(user__last_name__icontains=q) |
+            Q(run__icontains=q) |
+            Q(telefono__icontains=q) |
+            Q(direccion__icontains=q) |
+            Q(rol__nombre__icontains=q)
         )
-        # INICIO: Lógica para buscar por el campo booleano 'activo'
-        query_lower = query.lower()
-        
-        # Palabras que el usuario podría escribir para buscar 'activos'
-        palabras_activo = ['si', 'sí', 'activo', 'activos', 'true', '1']
-        
-        # Palabras que el usuario podría escribir para buscar 'inactivos'
-        palabras_inactivo = ['no', 'inactivo', 'inactivos', 'false', '0']
-        if query_lower in palabras_activo:
-            # Si busca "activo", combinamos la búsqueda de texto CON la condición booleana
-            final_query = text_query | Q(activo=True)
-        elif query_lower in palabras_inactivo:
-            # Si busca "inactivo", combinamos la búsqueda de texto CON la condición booleana
-            final_query = text_query | Q(activo=False)
+
+        if q_lower in palabras_activo:
+            perfiles = perfiles.filter(text_q | Q(activo=True))
+        elif q_lower in palabras_inactivo:
+            perfiles = perfiles.filter(text_q | Q(activo=False))
         else:
-            # Si no es una palabra booleana, solo buscamos en los campos de texto
-            final_query = text_query
-        
-        # FIN de la lógica para el campo 'activo'
-            
-        usuarios_list = usuarios_list.filter(final_query).distinct()
-    
-    paginator = Paginator(usuarios_list, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    context = {
-        'page_obj': page_obj,
-        'search_query': query,
-    }
-    return render(request, 'usuarios/lista.html', context)
+            perfiles = perfiles.filter(text_q)
+
+    paginator = Paginator(perfiles, 10)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    return render(request, "usuarios/lista.html", {
+        "page_obj": page_obj,
+        "search_query": q,
+    })
+
 
 @rol_requerido(roles_permitidos=['Admin'])
-def editarUsuario(request, usuario_id):
-    usuario = get_object_or_404(Usuario, pk=usuario_id)
-    if request.method == 'POST':
-        form = UsuarioEditForm(request.POST, instance=usuario)
-        if form.errors:
-            messages.error(request,f"Ese nombre de Usuario ya exite")
-        if form.is_valid():
-            form.save()
-            messages.success(request,f"¡Usuario '{usuario.nombre_usuario}' su rol fue cambiado con exito! por '{usuario.rol}'")
-            messages.success(request, f'¡Usuario "{usuario.nombre_usuario}" actualizado correctamente!')
-            return redirect('lista_usuarios')
-    else:
-        form = UsuarioEditForm(instance=usuario)
-    context = {
-        'form': form,
-        'usuario': usuario,
-    }
-    return render(request, 'usuarios/editar.html', context)
-
 @require_POST
-def deshabilitar_usuario(request, pk):
+def perfil_toggle_activo(request, pk: int):
     """
-    Alterna el booleano 'activo' del Usuario (modelo propio).
-    No elimina, solo habilita/deshabilita. Vuelve a la misma página.
+    Alterna Perfil.activo (no toca User.is_active).
+    Redirige a la misma URL (mantiene paginación y búsqueda).
     """
-    usuario = get_object_or_404(Usuario, pk=pk)
-    usuario.activo = not usuario.activo
-    usuario.save(update_fields=["activo"])
+    perfil = get_object_or_404(Perfil.objects.select_related("user"), pk=pk)
+    perfil.activo = not perfil.activo
+    perfil.save(update_fields=["activo"])
 
-    nombre = getattr(usuario, "nombre_usuario", str(usuario))
-    estado = "habilitado" if usuario.activo else "deshabilitado"
+    nombre = perfil.user.get_full_name() or perfil.user.username
+    estado = "habilitado" if perfil.activo else "deshabilitado"
     messages.success(request, f'El usuario «{nombre}» fue {estado} correctamente.')
 
     return redirect(request.POST.get("next") or reverse("lista_usuarios"))
 
 
-@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
-def asistencia_index(request):
-    form = SeleccionarActividadForm(request.GET or None)
+@rol_requerido(roles_permitidos=['Admin'])
+def editar_usuario(request, pk):
+    perfil = get_object_or_404(Perfil.objects.select_related("user", "rol"), pk=pk)
+    if request.method == "POST":
+        user_form = UserForm(request.POST, instance=perfil.user)
+        if not request.POST.get("password"):
+            # si no enviaron password, elimina el campo para no sobrescribirlo
+            user_form.fields.pop("password", None)
 
-    # Si hay parámetros (el usuario pulsó Continuar), valida
-    if request.GET:
-        if form.is_valid():
-            actividad = form.cleaned_data['actividad']
-            return redirect('asistencia_marcar', actividad_id=actividad.id)
-        # si no es válido, cae a render con errores
+        perfil_form = PerfilForm(request.POST, instance=perfil)
 
-    return render(request, 'asistencia/seleccionar.html', {'form': form})
+        if user_form.is_valid() and perfil_form.is_valid():
+            user = user_form.save(commit=False)
+            if "password" in user_form.cleaned_data and user_form.cleaned_data["password"]:
+                user.set_password(user_form.cleaned_data["password"])
+            user.save()
 
-
-@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
-def asistencia_marcar(request, actividad_id):
-    """
-    Paso 2: tabla de jugadores de la disciplina de la actividad con radios Presente/Ausente.
-    Requiere marcar TODOS (el formset obliga 'estado' requerido).
-    """
-    actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
-    disciplina = actividad.disciplina
-
-    # Jugadores correspondientes a la disciplina (y activos)
-    # Usamos Rendimiento como vínculo Estudiante-Disciplina
-    estudiantes = (Estudiante.objects
-                .filter(activo=True, rendimiento__disciplina=disciplina)
-                .distinct()
-                .order_by('apellido', 'nombre'))
-
-    # Si no hay vínculo rendimiento/disciplinas aún, podrías optar por:
-    # estudiantes = Estudiante.objects.filter(activo=True).order_by('apellido','nombre')
-
-    # QUIÉN MARCA: tomamos el Usuario (tu modelo propio) desde la sesión
-    usuario_id = request.session.get('usuario_id')
-    usuario = Usuario.objects.filter(pk=usuario_id).first()
-    marcador = usuario.nombre_usuario if usuario else "Desconocido"
-
-    initial = [
-        {
-            'estudiante_id': e.id,
-            'alumno': f"{e.apellido}, {e.nombre}",
-        }
-        for e in estudiantes
-    ]
-
-    Formset = AsistenciaFormSet
-    if request.method == 'POST':
-        formset = Formset(request.POST, initial=initial)
-        if formset.is_valid():
-            # Validar que todos tengan estado (el campo es required)
-            faltantes = [f for f in formset if not f.cleaned_data.get('estado')]
-            if faltantes:
-                messages.error(request, "Debes marcar Presente/Ausente para todos los jugadores.")
-            else:
-                with transaction.atomic():
-                    registros = []
-                    for f in formset:
-                        est_id = f.cleaned_data['estudiante_id']
-                        estado = f.cleaned_data['estado']
-                        est = Estudiante.objects.filter(pk=est_id).first()
-
-                        # upsert por (estudiante, actividad)
-                        obj, _created = Asistencia.objects.update_or_create(
-                            estudiante=est,
-                            actividad_deportiva=actividad,
-                            defaults={
-                                'estado': estado,
-                                'fecha_hora_marcaje': timezone.now(),
-                                'estudiante_nombre': f"{est.nombre} {est.apellido}" if est else "",
-                                # Si luego conectas Entrenador real, rellenas el FK.
-                                'entrenador': None,
-                                'entrenador_nombre': marcador,
-                            }
-                        )
-                        registros.append(obj)
-                messages.success(request, f"Asistencia guardada para {len(registros)} jugadores. Marcada por {marcador}.")
-                return redirect('asistencia_resumen', actividad_id=actividad.id)
+            perfil_form.save()
+            messages.success(request, "Usuario actualizado correctamente.")
+            return redirect("lista_usuarios")
         else:
-            messages.error(request, "Corrige los errores del formulario.")
+            messages.error(request, "Revisa los datos del formulario.")
     else:
-        formset = Formset(initial=initial)
+        user_form = UserForm(instance=perfil.user)
+        if "password" in user_form.fields:
+            user_form.fields["password"].widget.attrs["placeholder"] = "Dejar en blanco para no cambiar"
+        perfil_form = PerfilForm(instance=perfil)
 
-    contexto = {
-        'actividad': actividad,
-        'disciplina': disciplina,
-        'formset': formset,
-        'marcador': marcador,
-    }
-    return render(request, 'asistencia/marcar.html', contexto)
+    return render(request, "usuarios/editar.html", {
+        "perfil": perfil,
+        "user_form": user_form,
+        "perfil_form": perfil_form,
+    })
 
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
-def asistencia_resumen(request, actividad_id):
-    actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
-    registros = (Asistencia.objects
-                .filter(actividad_deportiva=actividad)
-                .select_related('estudiante'))
-    return render(request, 'asistencia/resumen.html', {
-        'actividad': actividad,
-        'registros': registros,
+def asistencia_seleccionar(request):
+    """
+    Paso 1: seleccionar Disciplina y Actividad.
+    """
+    disciplinas = Disciplina.objects.all().order_by("nombre")
+    # por simplicidad mostramos todas; puedes filtrar por disc. con JS si quieres
+    actividades = ActividadDeportiva.objects.select_related("disciplina").all().order_by("-fecha_inicio")
+
+    if request.method == "POST":
+        disc_id = request.POST.get("disciplina")
+        act_id = request.POST.get("actividad")
+
+        if not disc_id or not act_id:
+            messages.error(request, "Selecciona una disciplina y una actividad.")
+            return redirect("asistencia_seleccionar")
+
+        actividad = get_object_or_404(ActividadDeportiva, pk=act_id)
+        if str(actividad.disciplina_id) != str(disc_id):
+            messages.error(request, "La actividad no pertenece a la disciplina seleccionada.")
+            return redirect("asistencia_seleccionar")
+
+        return redirect("asistencia_marcar", actividad_id=actividad.id)
+
+    return render(request, "asistencia/seleccionar.html", {
+        "disciplinas": disciplinas,
+        "actividades": actividades,
+    })
+
+
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+
+def asistencia_marcar(request, actividad_id: int):
+    actividad = get_object_or_404(ActividadDeportiva.objects.select_related("disciplina"), pk=actividad_id)
+    disciplina = actividad.disciplina
+    inscripciones = (Inscripcion.objects
+                     .select_related("estudiante__perfil__user", "disciplina")
+                     .filter(disciplina=disciplina, estado="ACTIVA", estudiante__perfil__activo=True)
+                     .order_by("estudiante__perfil__user__last_name", "estudiante__perfil__user__first_name"))
+    estudiantes = [insc.estudiante for insc in inscripciones]
+    hoy = timezone.localdate()
+
+    if request.method == "POST":
+        # ⚠️ Asegura que el usuario que marca tenga Perfil
+        try:
+            marcaje_por = request.user.perfil
+        except Perfil.DoesNotExist:
+            messages.error(request, "Tu usuario no tiene Perfil asociado. No es posible registrar asistencia.")
+            return redirect("dashboard")
+
+        if not estudiantes:
+            messages.info(request, "No hay estudiantes inscritos para esta disciplina. No hay nada que guardar.")
+            return redirect("asistencia_seleccionar")
+
+        presentes_ids = set(map(int, request.POST.getlist("presentes")))
+
+        with transaction.atomic():
+            Asistencia.objects.filter(
+                actividad=actividad,
+                fecha_hora_marcaje__date=hoy
+            ).delete()
+
+            ahora = timezone.now()
+            creados = 0
+            for est in estudiantes:
+                if est.perfil_id in presentes_ids:
+                    Asistencia.objects.create(
+                        usuario=est.perfil,
+                        actividad=actividad,
+                        fecha_hora_marcaje=ahora,
+                        marcaje_por=marcaje_por,  # ✅ siempre con Perfil válido
+                        entrenador=marcaje_por if marcaje_por.rol.nombre == "Entrenador" else None,
+                    )
+                    creados += 1
+
+        messages.success(request, f"Asistencia guardada exitosamente. Presentes: {creados}.")
+        return redirect("dashboard")
+
+    presentes_ids_hoy = set(
+        Asistencia.objects.filter(actividad=actividad, fecha_hora_marcaje__date=hoy)
+        .values_list("usuario_id", flat=True)
+    )
+    return render(request, "asistencia/marcar.html", {
+        "actividad": actividad,
+        "disciplina": disciplina,
+        "estudiantes": estudiantes,
+        "presentes_ids_hoy": presentes_ids_hoy,
     })

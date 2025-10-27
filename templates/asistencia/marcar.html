@@ -1,45 +1,54 @@
 {% extends "base.html" %}
+{% block titulo %}Marcar asistencia{% endblock %}
 {% block contenido %}
 <div class="container py-4">
-    <h2 class="mb-1">Asistencia — {{ actividad.nombre }}</h2>
-    <p class="text-muted mb-4">
-        Disciplina: <strong>{{ disciplina }}</strong> · Marca: <strong>{{ marcador }}</strong>
-    </p>
+  <h2 class="mb-1">Asistencia — {{ actividad.nombre }}</h2>
+  <p class="text-muted">Disciplina: <strong>{{ disciplina.nombre }}</strong></p>
 
-    <form method="post" class="card p-3 shadow-sm">
-    {% csrf_token %}
-    <div class="table-responsive">
-        <table class="table align-middle">
-            <thead>
-            <tr>
-                <th>Alumno</th>
-                <th class="text-center">Presente</th>
-                <th class="text-center">Ausente</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for f in formset %}
-            <tr>
-                <td>
-                {{ f.estudiante_id }} 
-                {{ f.alumno }}
-                </td>
-                <td class="text-center">
-                <input type="radio" name="{{ f.estado.html_name }}" value="PRESENTE" class="form-check-input" required>
-                </td>
-                <td class="text-center">
-                <input type="radio" name="{{ f.estado.html_name }}" value="AUSENTE" class="form-check-input" required>
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
+  <form method="post" class="card p-3 shadow-sm">
+  {% csrf_token %}
 
-        <div class="d-flex gap-2">
-        <a href="{% url 'asistencia_index' %}" class="btn btn-outline-secondary">Volver</a>
-        <button class="btn btn-success">Guardar asistencia</button>
-        </div>
-    </form>
+  {% if not estudiantes %}
+    <div class="alert alert-info mb-3">
+      No hay estudiantes inscritos activos en esta disciplina. No es posible registrar asistencia.
+    </div>
+  {% endif %}
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Alumno</th>
+          <th class="text-center" style="width: 160px;">Presente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if estudiantes %}
+          {% for e in estudiantes %}
+            <tr>
+              <td>{{ e.perfil.user.get_full_name|default:e.perfil.user.username }}</td>
+              <td class="text-center">
+                <input type="checkbox"
+                       name="presentes"
+                       value="{{ e.perfil_id }}"
+                       class="form-check-input"
+                       {% if e.perfil_id in presentes_ids_hoy %}checked{% endif %}>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" class="text-center text-muted">Sin estudiantes.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between mt-3">
+    <a href="{% url 'asistencia_seleccionar' %}" class="btn btn-outline-secondary">Volver</a>
+    <button type="submit" class="btn btn-primary" {% if not estudiantes %}disabled{% endif %}>
+      Guardar asistencia
+    </button>
+  </div>
+</form>
 </div>
 {% endblock %}

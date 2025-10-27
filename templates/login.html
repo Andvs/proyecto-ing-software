@@ -18,7 +18,6 @@
 </style>
 {% endblock %}
 
-
 {% block contenido %}
 <div class="container">
     <div class="row justify-content-center">
@@ -27,25 +26,49 @@
                 <div class="card-header text-center bg-white border-0">
                     <h2 class="fw-bold my-4" style="color: #0a2342;">Iniciar Sesión</h2>
                 </div>
+
                 <div class="card-body">
-                    <form action="{% url 'login' %}" method="POST">
+
+                    <!-- Formulario de Login -->
+                    <form method="POST" action="{% url 'login' %}">
                         {% csrf_token %}
-                        
+                        {{ form.non_field_errors }}
+
                         <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="usuario" name="nombre_usuario" placeholder="Ingrese su usuario" required>
-                            <label for="usuario">Usuario</label>
+                            <input 
+                                type="text" 
+                                name="username" 
+                                class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                                id="id_username" 
+                                placeholder="Ingrese su usuario" 
+                                value="{{ form.username.value|default:'' }}" 
+                                required>
+                            <label for="id_username">Usuario</label>
+                            {% for error in form.username.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
                         </div>
-                        
+
                         <div class="form-floating mb-3">
-                            <input type="password" class="form-control" id="password" name="contraseña" placeholder="Ingrese su contraseña" required>
-                            <label for="password">Contraseña</label>
+                            <input 
+                                type="password" 
+                                name="password" 
+                                class="form-control {% if form.password.errors %}is-invalid{% endif %}" 
+                                id="id_password" 
+                                placeholder="Ingrese su contraseña" 
+                                required>
+                            <label for="id_password">Contraseña</label>
+                            {% for error in form.password.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
                         </div>
-                        
+
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg fw-bold">Iniciar Sesión</button>
                         </div>
                     </form>
                 </div>
+
             </div>
         </div>
     </div>

@@ -1,98 +1,108 @@
-import bcrypt
+# forms.py
 from django import forms
-from app.models import *
-from .models import Usuario, ActividadDeportiva, Asistencia, Estudiante, Disciplina
-from django.forms import formset_factory    
+from django.contrib.auth.models import User
+from django.contrib.auth.forms import AuthenticationForm
+from .models import Disciplina, ActividadDeportiva, Estudiante, Perfil
 
-class UsuarioForm(forms.ModelForm):
+class UserForm(forms.ModelForm):
+    password = forms.CharField(
+        label="Contraseña",
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Ingresa una contraseña"})
+    )
+    password2 = forms.CharField(  # <--- NUEVO
+        label="Repite la contraseña",
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Repite la contraseña"})
+    )
+
     class Meta:
-        model = Usuario
-        fields = ['nombre_usuario', 'contraseña', 'rol']
+        model = User
+        fields = ["username", "email", "password", "password2", "first_name", "last_name"]
         widgets = {
-            'nombre_usuario': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nombre (solo letras)',
-                'minlength': '3', 'maxlength': '50'
-            }),
-            'contraseña': forms.PasswordInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Contraseña (8–20, con mayúscula y minúscula)',
-                'minlength': '8', 'maxlength': '20'
-            }),
-            'rol': forms.Select(attrs={'class': 'form-control'})
+            "username":   forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de usuario"}),
+            "email":      forms.EmailInput(attrs={"class": "form-control", "placeholder": "correo@dominio.com"}),
+            "first_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre(s)"}),
+            "last_name":  forms.TextInput(attrs={"class": "form-control", "placeholder": "Apellidos"}),
         }
-        error_messages = {
-            'nombre_usuario': {
-                'required': 'El nombre es obligatorio.',
-                'min_length': 'El nombre debe tener al menos 3 caracteres.',
-            },
-            'contraseña': {
-                'required': 'La contraseña es obligatoria.',
-                'min_length': 'La contraseña debe tener al menos 8 caracteres.',
-                'max_length': 'La contraseña no puede superar 20 caracteres.',
-            },
-            'rol': {
-                'required': 'Debe seleccionar un rol.',
-            }
-        }        
-    def save(self, commit=True):
-        usuario = super().save(commit=False)
-        password_plano = self.cleaned_data['contraseña']
-        hashed = bcrypt.hashpw(password_plano.encode('utf-8'), bcrypt.gensalt())
-        usuario.contraseña = hashed.decode('utf-8')
-        if commit:
-            usuario.save()
-        return usuario
 
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password")
+        p2 = cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            self.add_error("password2", "Las contraseñas no coinciden.")
+        return cleaned
 
-class UsuarioEditForm(forms.ModelForm):
+class PerfilForm(forms.ModelForm):
     class Meta:
-        model = Usuario
-        fields = ['nombre_usuario','rol']
+        model = Perfil
+        fields = ["run", "telefono", "direccion", "rol"]
         widgets = {
-            'nombre_usuario': forms.TextInput(attrs={'class': 'form-control'}),
-            'rol': forms.Select(attrs={'class': 'form-select'}),
+            "run":       forms.TextInput(attrs={"class": "form-control", "placeholder": "RUN/DNI"}),
+            "telefono":  forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: +56 9 1234 5678"}),
+            "direccion": forms.TextInput(attrs={"class": "form-control", "placeholder": "Calle, número, ciudad"}),
+            "rol":       forms.Select(attrs={"class": "form-select"}),
         }
+
+class PerfilAuthForm(AuthenticationForm):
+    def confirm_login_allowed(self, user):
+        try:
+            perfil = user.perfil
+            if not perfil.activo:
+                raise forms.ValidationError(
+                    "Tu cuenta está deshabilitada. Contacta a un administrador.",
+                    code="inactive",
+                )
+        except Perfil.DoesNotExist:
+            pass  # si el user no tiene perfil, permitimos login
+        
+
+class EstudianteForm(forms.ModelForm):
+    class Meta:
+        model = Estudiante
+        fields = ["curso", "fecha_ingreso"]
+        widgets = {
+            "curso": forms.Select(attrs={"class": "form-select"}),
+            "fecha_ingreso": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+        }
+        
 
 class SeleccionarActividadForm(forms.Form):
     disciplina = forms.ModelChoiceField(
-        queryset=Disciplina.objects.all().order_by('nombre'),
-        required=True,
-        label="Disciplina",
-        widget=forms.Select(attrs={'class': 'form-select'})
+        queryset=Disciplina.objects.all().order_by("nombre"),
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"})
     )
     actividad = forms.ModelChoiceField(
         queryset=ActividadDeportiva.objects.none(),
         required=True,
-        label="Actividad deportiva",
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={"class": "form-select"})
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        d = None
-        if self.data.get('disciplina'):
-            d = self.data.get('disciplina')
-        elif self.initial.get('disciplina'):
-            d = self.initial.get('disciplina')
-
-        if d:
-            self.fields['actividad'].queryset = ActividadDeportiva.objects.filter(disciplina_id=d).order_by('-fecha_inicio')
+        # Si envían disciplina por GET, filtra actividades por esa disciplina
+        data = self.data or self.initial
+        disc_id = data.get("disciplina")
+        if disc_id:
+            self.fields["actividad"].queryset = (
+                ActividadDeportiva.objects
+                .filter(disciplina_id=disc_id)
+                .order_by("-fecha_inicio")
+            )
         else:
-            self.fields['actividad'].queryset = ActividadDeportiva.objects.all().order_by('-fecha_inicio')
+            # Sin disciplina, muestra todas (o deja vacío si prefieres)
+            self.fields["actividad"].queryset = (
+                ActividadDeportiva.objects.all().order_by("-fecha_inicio")
+            )
 
-
-ESTADOS = Asistencia.ESTADOS
-
-class AsistenciaItemForm(forms.Form):
-    estudiante_id = forms.IntegerField(widget=forms.HiddenInput())
-    alumno = forms.CharField(disabled=True, required=False, widget=forms.TextInput(attrs={'class': 'form-control-plaintext fw-semibold'}))
-    estado = forms.ChoiceField(
-        choices=ESTADOS,
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-        required=True,
-        label=""
+class MarcarAsistenciaForm(forms.Form):
+    perfil_id = forms.IntegerField(widget=forms.HiddenInput())
+    alumno = forms.CharField(
+        label="Alumno",
+        required=False,  # <-- añadir
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"})
     )
-
-AsistenciaFormSet = formset_factory(AsistenciaItemForm, extra=0, min_num=1, validate_min=True)
-
+    presente = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
+    )

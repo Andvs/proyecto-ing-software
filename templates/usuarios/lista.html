@@ -3,14 +3,7 @@
 
 {% block contenido %}
 <div class="container mt-5">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="margin: 5px;">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+    
     <h2 class="mb-4 text-center">Lista de Usuarios</h2>
     <div class="row mb-4">
         <div class="col-md-8 offset-md-2">
@@ -33,33 +26,37 @@
             <tbody>
                 {% for u in page_obj %}
                 <tr>
-                    <td>{{ u.nombre_usuario }}</td>
-                    <td>
-                        {% if u.activo %}
-                            <span class="badge bg-success">Sí</span>
-                        {% else %}
-                            <span class="badge bg-danger">No</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ u.rol }}</td>
-                        <td>
-                            <a href="{% url "editar_usuario" u.id %}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                            <button type="button" class="btn btn-sm {% if u.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#confirmarDesabilitarModal"
-                                    data-user-id="{{ u.id }}"
-                                    data-user-name="{{ u.nombre_usuario }}"
-                                    data-user-active="{{ u.activo|yesno:'true,false' }}">
-                                {% if u.activo %}Deshabilitar{% else %}Habilitar{% endif %}
-                            </button>
-                        </td>
-                    </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="{% if user.is_staff %}4{% else %}3{% endif %}" class="text-center">
-                        No se encontraron usuarios.
-                    </td>
+                <td>
+                    {{ u.user.username }}
+                    {% if u.user.get_full_name %}<br><small class="text-muted">{{ u.user.get_full_name }}</small>{% endif %}
+                </td>
+
+                <td>
+                    {% if u.activo %}
+                    <span class="badge bg-success">Sí</span>
+                    {% else %}
+                    <span class="badge bg-danger">No</span>
+                    {% endif %}
+                </td>
+
+                <td>{{ u.rol.nombre }}</td>
+
+                <td>
+                    <a href="{% url 'editar_usuario' u.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a>
+
+                    <button type="button"
+                            class="btn btn-sm {% if u.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                            data-bs-toggle="modal"
+                            data-bs-target="#confirmarDesabilitarModal"
+                            data-user-id="{{ u.id }}"
+                            data-user-name="{{ u.user.get_full_name|default:u.user.username }}"
+                            data-user-active="{{ u.activo|yesno:'true,false' }}">
+                    {% if u.activo %}Deshabilitar{% else %}Habilitar{% endif %}
+                    </button>
+                </td>
                 </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center">No se encontraron usuarios.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -129,33 +126,32 @@
         </div>
     </div>
 </div>
-<form id="formToggleUsuario" method="post" action="" style="display:none;">
+<form id="formTogglePerfil" method="post" action="" style="display:none;">
   {% csrf_token %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
 </form>
 <script>
   const modal = document.getElementById('confirmarDesabilitarModal');
-  const form = document.getElementById('formToggleUsuario');
-  const modalText = modal.querySelector('#modal-text');
-  const confirmarBtn = modal.querySelector('#confirmar-btn');
+  const form = document.getElementById('formTogglePerfil');
+  const modalText = document.getElementById('modal-text');
+  const confirmarBtn = document.getElementById('confirmar-btn');
 
-  // URL base con un ID dummy que reemplazaremos por JS
-  const baseAction = "{% url 'deshabilitar_usuario' 0 %}"; // requiere la ruta con int:pk
+  // Base con ID dummy que reemplazaremos
+  const baseAction = "{% url 'toggle_activo' 0 %}";
 
   modal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
-    const userId = button.getAttribute('data-user-id');
-    const userName = button.getAttribute('data-user-name');
-    const isActive = button.getAttribute('data-user-active') === 'true';
+    const id = button.getAttribute('data-user-id');
+    const name = button.getAttribute('data-user-name');
+    const active = button.getAttribute('data-user-active') === 'true';
 
-    // Texto del modal según estado actual
-    const accion = isActive ? 'deshabilitar' : 'habilitar';
-    modalText.textContent = `¿Seguro que deseas ${accion} a "${userName}"?`;
+    const accion = active ? 'deshabilitar' : 'habilitar';
+    modalText.textContent = `¿Seguro que deseas ${accion} a "${name}"?`;
 
-    // Seteamos la acción del form oculto
-    form.action = baseAction.replace('/0/', `/${userId}/`);
+    // set action POST
+    form.action = baseAction.replace('/0/', `/${id}/`);
 
-    // Hacemos que el botón "Aceptar" envíe el POST en lugar de navegar
+    // Aceptar => submit POST (no navegamos por href)
     confirmarBtn.onclick = function (e) {
       e.preventDefault();
       form.submit();

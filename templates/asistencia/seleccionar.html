@@ -1,28 +1,45 @@
 {% extends "base.html" %}
-{% block titulo %}Seleccionar Actividad{% endblock %}
+{% block titulo %}Seleccionar actividad{% endblock %}
+
 {% block contenido %}
 <div class="container py-4">
-    <h2 class="mb-4">Toma de Asistencia</h2>
-    <form method="get" class="card p-4 shadow-sm">
-        <div class="row g-3">
-        <div class="col-md-4">
-            <label class="form-label">Disciplina</label>
-            {{ form.disciplina }}
-        </div>
-        <div class="col-md-8">
-            <label class="form-label">Actividad deportiva</label>
-            {{ form.actividad }}
-        </div>
-        </div>
+  <h2 class="mb-3">Selecciona Disciplina y Actividad</h2>
 
-        <div class="d-flex justify-content-between mt-4">
-        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
-            Volver
-        </a>
-        <button class="btn btn-primary" type="submit">
-            Continuar
-        </button>
-        </div>
-    </form>
+  <form method="post" class="card p-3 shadow-sm">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Disciplina</label>
+        <select name="disciplina" class="form-select" required>
+          <option value="">-- Selecciona --</option>
+          {% for d in disciplinas %}
+            <option value="{{ d.id }}">{{ d.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Actividad</label>
+        <select name="actividad" class="form-select" required>
+          <option value="">-- Selecciona --</option>
+          {% for a in actividades %}
+            <option value="{{ a.id }}">{{ a.nombre }} — {{ a.disciplina.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between mt-4">
+      <!-- 🔙 Botón para volver al Dashboard -->
+      <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+        Volver al panel principal
+      </a>
+
+      <!-- ✅ Botón para continuar -->
+      <button type="submit" class="btn btn-primary">
+        Continuar
+      </button>
+    </div>
+  </form>
 </div>
-{% endblock contenido %}
+{% endblock %}
+

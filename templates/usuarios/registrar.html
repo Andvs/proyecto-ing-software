@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block titulo %}Registrar Usuario{% endblock %}
+
+{% block contenido %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+      <div class="card shadow-lg">
+        <div class="card-header text-center py-3">
+          <h3 class="fw-bold mb-0">Registrar Usuario</h3>
+        </div>
+        <div class="card-body p-4">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="row g-4">
+              <!-- Datos de cuenta -->
+              <div class="col-md-6">
+                <h5 class="mb-3 text-primary fw-semibold">Datos de Cuenta</h5>
+
+                <div class="mb-3">
+                  {{ user_form.username.label_tag }} {{ user_form.username }}
+                  {% for e in user_form.username.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ user_form.email.label_tag }} {{ user_form.email }}
+                  {% for e in user_form.email.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ user_form.password.label_tag }} {{ user_form.password }}
+                  {% for e in user_form.password.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+
+                <div class="mb-3">
+                  {{ user_form.password2.label_tag }} {{ user_form.password2 }}
+                  {% for e in user_form.password2.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ user_form.first_name.label_tag }} {{ user_form.first_name }}
+                  {% for e in user_form.first_name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ user_form.last_name.label_tag }} {{ user_form.last_name }}
+                  {% for e in user_form.last_name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+              </div>
+
+              <!-- Datos personales -->
+              <div class="col-md-6">
+                <h5 class="mb-3 text-primary fw-semibold">Datos Personales</h5>
+
+                <div class="mb-3">
+                  {{ perfil_form.run.label_tag }} {{ perfil_form.run }}
+                  {% for e in perfil_form.run.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ perfil_form.telefono.label_tag }} {{ perfil_form.telefono }}
+                  {% for e in perfil_form.telefono.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ perfil_form.direccion.label_tag }} {{ perfil_form.direccion }}
+                  {% for e in perfil_form.direccion.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+                <div class="mb-3">
+                  {{ perfil_form.rol.label_tag }} 
+                  {{ perfil_form.rol }}
+                  {% for e in perfil_form.rol.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+              </div>
+
+              <!-- Datos de Estudiante (condicional) -->
+              <div class="col-12" id="bloque-estudiante" style="display:none;">
+                <hr>
+                <h5 class="mb-3 text-success fw-semibold">Datos de Estudiante</h5>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      {{ est_form.curso.label_tag }} {{ est_form.curso }}
+                      {% for e in est_form.curso.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      {{ est_form.fecha_ingreso.label_tag }} {{ est_form.fecha_ingreso }}
+                      {% for e in est_form.fecha_ingreso.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center mt-4">
+              <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">Registrar</button>
+              <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg px-4 ms-2">Cancelar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Muestra/oculta los campos de estudiante cuando el rol sea "Estudiante"
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectRol = document.getElementById('{{ perfil_form.rol.id_for_label }}'); // id del select rol
+    const bloque = document.getElementById('bloque-estudiante');
+
+    function toggleEstudiante() {
+      const texto = selectRol.options[selectRol.selectedIndex]?.text?.trim() || '';
+      bloque.style.display = (texto === 'Estudiante') ? '' : 'none';
+    }
+    if (selectRol) {
+      toggleEstudiante();
+      selectRol.addEventListener('change', toggleEstudiante);
+    }
+  });
+</script>
+{% endblock %}
