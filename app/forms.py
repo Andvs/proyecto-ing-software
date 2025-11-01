@@ -2,7 +2,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
-from .models import Disciplina, ActividadDeportiva, Estudiante, Perfil
+from .models import *
 
 class UserForm(forms.ModelForm):
     password = forms.CharField(
@@ -106,3 +106,22 @@ class MarcarAsistenciaForm(forms.Form):
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
     )
+class DisciplinaForm(forms.ModelForm):
+
+    class Meta:
+        model = Disciplina
+        fields = ['nombre', 'descripcion']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Añadimos atributos de Bootstrap a los campos
+        self.fields['nombre'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Ej. Preparación Física'
+        })
+        self.fields['descripcion'].widget.attrs.update({
+            'class': 'form-control',
+            'rows': 4, 
+            'placeholder': 'Describe la disciplina...'
+        })

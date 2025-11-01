@@ -45,7 +45,7 @@ class Disciplina(models.Model):
 
 class ActividadDeportiva(models.Model):
     nombre = models.CharField(max_length=50)
-    disciplina = models.ForeignKey(Disciplina, on_delete=models.PROTECT)
+    disciplina = models.ForeignKey(Disciplina, on_delete=models.CASCADE ,null=True, blank=True)
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField(null=True, blank=True)
     lugar = models.CharField(max_length=100)

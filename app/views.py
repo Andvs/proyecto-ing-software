@@ -13,13 +13,10 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required
 
 # Formularios
-from .forms import (
-    UserForm, PerfilForm, EstudianteForm,
-    SeleccionarActividadForm, MarcarAsistenciaForm
-)
+from .forms import *
 
 # Modelos
-from .models import ActividadDeportiva, Asistencia, Estudiante, Perfil, Disciplina, Inscripcion
+from .models import *
 
 # Decorador
 from .decorators import rol_requerido
@@ -260,14 +257,13 @@ def asistencia_seleccionar(request):
 
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
-
 def asistencia_marcar(request, actividad_id: int):
     actividad = get_object_or_404(ActividadDeportiva.objects.select_related("disciplina"), pk=actividad_id)
     disciplina = actividad.disciplina
     inscripciones = (Inscripcion.objects
-                     .select_related("estudiante__perfil__user", "disciplina")
-                     .filter(disciplina=disciplina, estado="ACTIVA", estudiante__perfil__activo=True)
-                     .order_by("estudiante__perfil__user__last_name", "estudiante__perfil__user__first_name"))
+                    .select_related("estudiante__perfil__user", "disciplina")
+                    .filter(disciplina=disciplina, estado="ACTIVA", estudiante__perfil__activo=True)
+                    .order_by("estudiante__perfil__user__last_name", "estudiante__perfil__user__first_name"))
     estudiantes = [insc.estudiante for insc in inscripciones]
     hoy = timezone.localdate()
 
@@ -317,3 +313,86 @@ def asistencia_marcar(request, actividad_id: int):
         "estudiantes": estudiantes,
         "presentes_ids_hoy": presentes_ids_hoy,
     })
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+def crear_disciplina(request):
+    if request.method == 'POST':
+        # Si el método es POST, procesamos el formulario
+        form = DisciplinaForm(request.POST)
+        if form.is_valid():
+            form.save() # Guarda el objeto en la base de datos
+            # Añade un mensaje de éxito
+            messages.success(request, '¡Disciplina registrada con éxito!')
+            # Redirige a la lista de disciplinas (cambia 'lista_disciplinas' por tu URL)
+            return redirect('lista_disciplinas') 
+    else:
+        # Si el método es GET, mostramos un formulario vacío
+        form = DisciplinaForm()
+    # Pasamos el formulario al contexto de la plantilla
+    context = {
+        'form': form
+    }
+    return render(request, 'disiplina/crear.html', context)
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+def lista_disciplinas(request):
+    # 1. Obtener el término de búsqueda
+    search_query = request.GET.get('q', '')
+    
+    # 2. Queryset base
+    disciplinas_list = Disciplina.objects.all().order_by('nombre')
+
+    # 3. Aplicar filtro de búsqueda si existe
+    if search_query:
+        disciplinas_list = disciplinas_list.filter(
+            Q(nombre__icontains=search_query) |
+            Q(descripcion__icontains=search_query)
+        )
+
+    # 4. Configurar paginación
+    paginator = Paginator(disciplinas_list, 10) # 10 disciplinas por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+    }
+    return render(request, 'disiplina/lista.html', context)
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
+def editar_disciplina(request, pk):
+    # 1. Obtenemos la disciplina que queremos editar (o mostramos 404 si no existe)
+    disciplina = get_object_or_404(Disciplina, pk=pk)
+
+    if request.method == 'POST':
+        # 2. Si se envía el formulario, lo procesamos con los datos nuevos
+        #    pasando la 'instance' para que sepa qué objeto actualizar.
+        form = DisciplinaForm(request.POST, instance=disciplina)
+        if form.is_valid():
+            form.save() # Guarda los cambios en el objeto existente
+            messages.success(request, '¡Disciplina actualizada con éxito!')
+            return redirect('lista_disciplinas') # Vuelve a la lista
+    else:
+        # 3. Si es GET, creamos el formulario y le pasamos la 'instance'
+        #    para que muestre los datos actuales de esa disciplina.
+        form = DisciplinaForm(instance=disciplina)
+
+    context = {
+        'form': form
+    }
+    # 4. Renderizamos una plantilla (podemos crear una nueva o reutilizar la de crear)
+    #    Vamos a crear una nueva para que el título sea "Editar"
+    return render(request, 'disiplina/editar.html', context)
+
+@require_POST # Súper importante para la seguridad en eliminaciones
+def eliminar_disciplina(request, pk):
+    disciplina = get_object_or_404(Disciplina, pk=pk)
+    
+    try:
+        nombre_disciplina = disciplina.nombre
+        disciplina.delete() # Borra el objeto de la base de datos
+        messages.success(request, f'¡Disciplina "{nombre_disciplina}" eliminada con éxito!')
+    except Exception as e:
+        messages.error(request, f'Error al eliminar la disciplina: {e}')
+
+    # Redirigimos de vuelta a la lista
+    # (El script ya no envía 'next', así que redirigimos a la lista principal)
+    return redirect('lista_disciplinas')

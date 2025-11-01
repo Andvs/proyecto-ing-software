@@ -20,4 +20,9 @@ urlpatterns = [
     # --- Asistencia (sin namespace) ---
     path('asistencia/', v.asistencia_seleccionar, name='asistencia_seleccionar'),
     path('asistencia/<int:actividad_id>/marcar/', v.asistencia_marcar, name='asistencia_marcar'),
+    # --- disiplina (sin namespace) ---
+    path('disciplinas/crear/', v.crear_disciplina, name='crear_disciplina'),
+    path('disciplinas/', v.lista_disciplinas, name='lista_disciplinas'),
+    path('disciplinas/editar/<int:pk>/', v.editar_disciplina, name='editar_disciplina'),
+    path('disciplinas/eliminar/<int:pk>/', v.eliminar_disciplina, name='eliminar_disciplina'),
 ]

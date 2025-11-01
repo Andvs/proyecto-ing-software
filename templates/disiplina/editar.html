@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Editar Disciplina{% endblock %} {% block contenido %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-lg">
+        <div class="card-header text-center py-3">
+          <h3 class="fw-bold mb-0">Editar Disciplina</h3> </div>
+        <div class="card-body p-4">
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+              {{ form.nombre.label_tag }}
+              {{ form.nombre }}
+              {% for e in form.nombre.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.descripcion.label_tag }}
+              {{ form.descripcion }}
+              {% for e in form.descripcion.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="text-center mt-4">
+              <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">Actualizar</button>
+              
+              <a href="{% url 'lista_disciplinas' %}" class="btn btn-outline-secondary btn-lg px-4 ms-2">Cancelar</a>
+            </div>
+            
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
