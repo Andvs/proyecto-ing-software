@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block titulo %}Panel de Administración{% endblock %}
+
+{% block body %}
+
+<style>
+  .page-container { max-width: 1100px; margin-top: 5rem; }
+  .navbar { background-color:#0a2342 !important; }
+  .navbar-brand { color:#fff !important; font-weight:600; }
+  .navbar-brand img { height:50px; width:auto; margin-right:.5rem; }
+  .navbar-nav .nav-link{
+    color: rgba(255,255,255,.70);
+    font-weight:500;
+    transition: color .2s ease-in-out, background-color .2s ease-in-out;
+    border-radius:.5rem; padding:.5rem 1rem;
+  }
+  .navbar-nav .nav-link:hover{ color:#fff; }
+  .navbar-nav .nav-link.active{ color:#fff; background-color: rgba(255,255,255,.15); }
+  #navbarUser span{ color:#fff; font-size:.95rem; }
+  #navbarUser .fw-semibold{ color:#dbe6ff; }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
+      <img src="{% static 'img/logo.png' %}" alt="Escuela San Salvador">
+      Escuela San Salvador
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbarNav" aria-controls="navbarNav"
+            aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto align-items-center">
+
+        
+
+        {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' %}
+          <li class="nav-item">
+            <a class="nav-link px-3 {% if request.resolver_match.url_name == 'lista_usuarios' or request.resolver_match.url_name == 'registrar' or request.resolver_match.url_name == 'editar_usuario' %}active{% endif %}"
+               href="{% url 'lista_usuarios' %}">Usuarios</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 {% if request.resolver_match.url_name == 'lista_disciplinas' or request.resolver_match.url_name == 'crear_disciplina' or request.resolver_match.url_name == 'editar_disciplina' %}active{% endif %}"
+               href="{% url 'lista_disciplinas' %}">Disciplinas</a>
+          </li>
+        {% endif %}
+
+        {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Entrenador' or request.user.perfil.rol.nombre == 'Admin' %}
+          <li class="nav-item">
+            <a class="nav-link px-3 {% if request.resolver_match.url_name == 'asistencia_listar' or request.resolver_match.url_name == 'asistencia_marcar' or request.resolver_match.url_name == 'asistencia_ver_estudiantes' or request.resolver_match.url_name == 'asistencia_editar' %}active{% endif %}"
+               href="{% url 'asistencia_listar' %}">Asistencia</a>
+          </li>
+        {% endif %}
+
+        <!-- Inicio -->
+        <li class="nav-item">
+          <a class="nav-link px-3 {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+             href="{% url 'dashboard' %}">Inicio</a>
+        </li>
+
+        <!-- Menú usuario (solo Cerrar sesión) -->
+        <li class="nav-item dropdown ms-3">
+          <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="navbarUser"
+             role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-person-circle fs-5"></i>
+            <span>
+              {{ request.user.get_full_name|default:request.user.username }}:
+              {% if request.user.is_superuser %}
+                <span class="fw-semibold">Superusuario</span>
+              {% elif request.user.perfil.rol.nombre %}
+                <span class="fw-semibold">{{ request.user.perfil.rol.nombre }}</span>
+              {% else %}
+                <span class="fw-semibold text-muted">Sin rol</span>
+              {% endif %}
+            </span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="navbarUser">
+            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Cerrar sesión</a></li>
+          </ul>
+        </li>
+
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container page-container">
+  {% block contenido %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "dashboard_base.html" %}
+{% load tz %}
+
+{% block titulo %}Asistencia — {{ actividad.nombre }} ({{ fecha|date:"d-m-Y" }}){% endblock %}
+
+{% block contenido %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="mb-0">
+      {{ actividad.nombre }} — {{ actividad.disciplina.nombre }}
+      <small class="text-muted">({{ fecha|date:"d-m-Y" }})</small>
+    </h3>
+    <div class="btn-group">
+      <a href="{% url 'asistencia_listar' %}" class="btn btn-outline-secondary">Volver</a>
+      <a href="{% url 'asistencia_editar' actividad.id fecha|date:'Y-m-d' %}" class="btn btn-primary">Editar sesión</a>
+    </div>
+  </div>
+
+  <p class="text-muted mb-3">
+    Marcada por:
+    {% if sesion.marcaje_por %}
+      {{ sesion.marcaje_por.user.get_full_name|default:sesion.marcaje_por.user.username }}
+    {% else %}
+      —
+    {% endif %}
+    · Presentes: <strong>{{ presentes_count }}</strong>
+  </p>
+
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Usuario</th>
+            <th>Nombre</th>
+            <th>Hora de marcaje</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in detalles %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ a.usuario.user.username }}</td>
+            <td>{{ a.usuario.user.last_name }}, {{ a.usuario.user.first_name }}</td>
+            <td>
+              {# usa la zona del proyecto o fuerza America/Santiago si prefieres #}
+              {{ a.fecha_hora_marcaje|timezone:"America/Santiago"|date:"H:i" }}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">No hay presentes en esta sesión.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

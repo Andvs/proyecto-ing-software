@@ -1,52 +1,26 @@
-{% extends 'base.html' %}
+{% extends 'dashboard_base.html' %}
 {% load static %}
 
 {% block titulo %}Panel de Administración{% endblock %}
 
-{% block extra_css %}
-<style>
-  body { background-color: #f4f6fa; }
-  .dashboard-container { max-width: 1100px; margin-top: 5rem; }
-  .action-card { transition: transform .2s ease-in-out, box-shadow .2s ease-in-out; border: none; border-radius: 1rem; }
-  .action-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-  .action-card .icon { font-size: 3.25rem; color: #0a2342; }
-  .section-title { color:#0a2342; }
-</style>
-{% endblock %}
-
 {% block contenido %}
-<nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #0a2342;">
-  <div class="container">
-    <a class="navbar-brand" href="{% url 'dashboard' %}">
-      <img src="{% static 'img/logo.png' %}" alt="Escuela San Salvador" style="height: 50px;">
-      Panel de Administración
-    </a>
-    <div class="d-flex">
-      <a href="{% url 'logout' %}" class="btn btn-outline-light">Cerrar Sesión</a>
-    </div>
-  </div>
-</nav>
-
 <div class="container dashboard-container">
+
+  <!-- Encabezado -->
   <div class="text-center mb-5">
-    {% with nombre=request.user.get_full_name|default:request.user.username %}
-      <h1 class="display-6 mb-2">Hola, {{ nombre }}</h1>
-    {% endwith %}
-    {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' %}
-      <p class="lead text-muted">Selecciona un módulo para comenzar</p>
-    {% else %}
-      <p class="lead text-muted">Bienvenido al panel</p>
-    {% endif %}
+    <h1 class="display-6 mb-2">Hola, {{ request.user.get_full_name|default:request.user.username }}</h1>
+    <p class="lead text-muted">Selecciona un módulo para comenzar</p>
   </div>
 
   <div class="row g-4 justify-content-center">
 
-    {# === Gestión de Usuarios (Admin o Superusuario) === #}
+    {# ========================== ADMIN ========================== #}
     {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' %}
       <div class="col-12 text-center">
-        <h3 class="section-title fw-bold mb-3">Gestión de Usuarios</h3>
+        <h3 class="section-title fw-bold mb-3">Administración</h3>
       </div>
 
+      <!-- Usuarios -->
       <div class="col-md-5">
         <a href="{% url 'registrar' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
@@ -56,12 +30,12 @@
                 <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
               </svg>
             </div>
-            <h3 class="card-title mt-2">Agregar Usuario</h3>
+            <h3 class="card-title mt-2">Agregar usuario</h3>
             <p class="card-text text-muted">Crear un nuevo perfil en el sistema.</p>
           </div>
         </a>
       </div>
-      
+
       <div class="col-md-5">
         <a href="{% url 'lista_usuarios' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
@@ -70,12 +44,17 @@
                 <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
               </svg>
             </div>
-            <h3 class="card-title mt-2">Visualizar Usuarios</h3>
+            <h3 class="card-title mt-2">Usuarios</h3>
             <p class="card-text text-muted">Ver y administrar la lista de usuarios.</p>
           </div>
         </a>
       </div>
-    {% endif %}
+
+      <!-- Disciplinas -->
+      <div class="col-12 text-center">
+        <h3 class="section-title fw-bold mb-3">Gestión de Disciplinas</h3>
+      </div>
+
       <div class="col-md-5">
         <a href="{% url 'crear_disciplina' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
@@ -84,11 +63,12 @@
                 <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
               </svg>
             </div>
-            <h3 class="card-title mt-2">Crear Disciplina</h3>
+            <h3 class="card-title mt-2">Crear disciplina</h3>
             <p class="card-text text-muted">Crear una nueva disiplina en el sistema</p>
           </div>
         </a>
       </div>
+
       <div class="col-md-5">
         <a href="{% url 'lista_disciplinas' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
@@ -97,20 +77,47 @@
                 <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
               </svg>
             </div>
-            <h3 class="card-title mt-2">Visualizar Disiplina</h3>
+            <h3 class="card-title mt-2">Disciplinas</h3>
             <p class="card-text text-muted">Ver y administrar la lista de disiplinas</p>
           </div>
         </a>
       </div>
+    {% endif %}
 
-    {# === Asistencia (Entrenador o Admin) === #}
-    {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Entrenador' or request.user.perfil.rol.nombre == 'Admin' %}
+    {# ====== Inscribir estudiante (Admin y Coordinador) — por implementar ====== #}
+    {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' or request.user.perfil.rol.nombre == 'Coordinador Deportivo' %}
+      <div class="col-12 text-center mt-4">
+        <h3 class="section-title fw-bold mb-3">Inscripciones</h3>
+      </div>
+
+      <div class="col-md-10">
+        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
+          <div class="card-body d-flex align-items-center justify-content-between p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
+                  <path d="M15.854 5.146a.5.5 0 0 0-.708-.708L10.5 9.085 9.354 7.94a.5.5 0 1 0-.708.707l1.5 1.5a.5.5 0 0 0 .708 0l5-5z"/>
+                  <path d="M1 14s-1 0-1-1 1-4 6-4c.61 0 1.17.042 1.675.12a5.5 5.5 0 0 0-.675 1.88C5.062 10.334 4 11 4 13H1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="mb-1">Inscribir estudiante a actividad</h4>
+                <p class="mb-0 text-muted">Próximamente (no implementado).</p>
+              </div>
+            </div>
+          </div>
+        </a>
+      </div>
+    {% endif %}
+
+    {# =================== ENTRENADOR / ADMIN – Asistencia =================== #}
+    {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' or request.user.perfil.rol.nombre == 'Entrenador' %}
       <div class="col-12 text-center mt-4">
         <h3 class="section-title fw-bold mb-3">Asistencia</h3>
       </div>
 
       <div class="col-md-10">
-        <a href="{% url 'asistencia_seleccionar' %}" class="card action-card text-decoration-none shadow-sm h-100">
+        <a href="{% url 'asistencia_listar' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body d-flex align-items-center justify-content-between p-4">
             <div class="d-flex align-items-center gap-3">
               <div class="icon">
@@ -120,32 +127,169 @@
                 </svg>
               </div>
               <div>
-                <h4 class="mb-1">Toma de asistencia</h4>
-                <p class="mb-0 text-muted">Selecciona actividad y marca presentes.</p>
+                <h4 class="mb-1">Asistencia</h4>
+                <p class="mb-0 text-muted">Gestiona la asistencia de actividades deportivas.</p>
               </div>
             </div>
-            <span class="btn btn-primary">Ingresar</span>
           </div>
         </a>
       </div>
     {% endif %}
-    {# === Inscribirse a una diciplina (Estudiante o Admin) === #}
-    {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Estudiante' or request.user.perfil.rol.nombre == 'Admin' %}
+
+    {# =================== COORDINADOR – Panel e informes =================== #}
+    {% if request.user.perfil.rol.nombre == 'Coordinador Deportivo' %}
+      <div class="col-12 text-center">
+        <h3 class="section-title fw-bold mb-3">Coordinación deportiva</h3>
+      </div>
+
       <div class="col-md-5">
-        <a href="{% url 'lista_usuarios' %}" class="card action-card text-decoration-none shadow-sm h-100">
+        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-collection" viewBox="0 0 16 16">
+                <path d="M2 3h12v10H2z"/>
+                <path d="M1 1h14v2H1zM1 13h14v2H1z"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Panel consolidado</h3>
+            <p class="card-text text-muted">Vista de estudiantes, entrenadores y disciplinas (no implementado).</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-md-5">
+        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-clipboard-data" viewBox="0 0 16 16">
+                <path d="M10 1.5v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1h4z"/>
+                <path d="M6 12h1V7H6v5zm2 0h1V5H8v7zm2 0h1V9h-1v3z"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Informes y evaluaciones</h3>
+            <p class="card-text text-muted">Informes de asistencia/evaluaciones (no implementado).</p>
+          </div>
+        </a>
+      </div>
+
+      <!-- Gestión de Disciplinas también visible para Coordinador -->
+      <div class="col-12 text-center mt-4">
+        <h3 class="section-title fw-bold mb-3">Gestión de Disciplinas</h3>
+      </div>
+
+      <div class="col-md-5">
+        <a href="{% url 'crear_disciplina' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
             <div class="icon mb-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
                 <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
               </svg>
             </div>
-            <h3 class="card-title mt-2">Inscribirse a una diciplina</h3>
-            <p class="card-text text-muted">Inscribirse y ver las diciplinas disponibles</p>
+            <h3 class="card-title mt-2">Crear disciplina</h3>
+            <p class="card-text text-muted">Registrar una nueva disciplina deportiva.</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-md-5">
+        <a href="{% url 'lista_disciplinas' %}" class="card action-card text-decoration-none shadow-sm h-100">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
+                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Disciplinas</h3>
+            <p class="card-text text-muted">Ver y administrar la lista de disciplinas.</p>
           </div>
         </a>
       </div>
     {% endif %}
 
+    {# =================== ESTUDIANTE =================== #}
+    {% if request.user.perfil.rol.nombre == 'Estudiante' %}
+      <div class="col-12 text-center mt-4">
+        <h3 class="section-title fw-bold mb-3">Estudiante</h3>
+      </div>
+
+      <div class="col-md-5">
+        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-clock-history" viewBox="0 0 16 16">
+                <path d="M8.515 3.025a5 5 0 1 0 4.46 4.46l.93.367A6 6 0 1 1 8 2v1a5 5 0 0 0 .515.025z"/>
+                <path d="M7.5 5.5v3l2.5 1.5.5-.866-2-1.2V5.5z"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Mi asistencia</h3>
+            <p class="card-text text-muted">Historial de participación (no implementado).</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-md-5">
+        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-journal-check" viewBox="0 0 16 16">
+                <path d="M3 0h9a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3z"/>
+                <path d="M5.5 7.5l1.5 1.5 3-3 .708.708-3.707 3.707L4.793 8.207z"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Mis evaluaciones</h3>
+            <p class="card-text text-muted">Notas y progreso (no implementado).</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-md-10">
+        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
+          <div class="card-body d-flex align-items-center justify-content-between p-4">
+            <div class="d-flex align-items-center gap-3">
+              <div class="icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-calendar-event" viewBox="0 0 16 16">
+                  <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h.5A1.5 1.5 0 0 1 15 2.5V4H1V2.5A1.5 1.5 0 0 1 2.5 1H3V.5a.5.5 0 0 1 .5-.5z"/>
+                  <path d="M1 5h14v8.5A1.5 1.5 0 0 1 13.5 15h-11A1.5 1.5 0 0 1 1 13.5V5zm4 3h3v3H5V8z"/>
+                </svg>
+              </div>
+              <div>
+                <h4 class="mb-1">Horarios y comunicados</h4>
+                <p class="mb-0 text-muted">Visualizar horarios/comunicados (no implementado).</p>
+              </div>
+            </div>
+          </div>
+        </a>
+      </div>
+    {% endif %}
   </div>
 </div>
+
+<!-- Modal "En construcción" -->
+<div class="modal fade" id="todoModal" tabindex="-1" aria-labelledby="todoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="todoModalLabel">Funcionalidad no implementada</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        Esta opción aún no está disponible en el sistema. Próximamente.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('click', function (e) {
+    const a = e.target.closest('a.todo-link');
+    if (a) {
+      e.preventDefault();
+      const modal = new bootstrap.Modal(document.getElementById('todoModal'));
+      modal.show();
+    }
+  });
+</script>
 {% endblock %}

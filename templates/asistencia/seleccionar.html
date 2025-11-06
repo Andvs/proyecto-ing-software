@@ -1,45 +1,59 @@
-{% extends "base.html" %}
-{% block titulo %}Seleccionar actividad{% endblock %}
+{% extends "dashboard_base.html" %}
 
 {% block contenido %}
 <div class="container py-4">
-  <h2 class="mb-3">Selecciona Disciplina y Actividad</h2>
+  <h2 class="mb-4 text-center">Registrar asistencia</h2>
 
-  <form method="post" class="card p-3 shadow-sm">
-    {% csrf_token %}
-    <div class="row g-3">
+  <div class="card p-4 shadow-sm">
+    <div class="row g-3 align-items-end">
+      <!-- Disciplina: recarga por GET al cambiar -->
       <div class="col-md-6">
-        <label class="form-label">Disciplina</label>
-        <select name="disciplina" class="form-select" required>
+        <label class="form-label fw-semibold">Disciplina</label>
+        <select class="form-select"
+                onchange="window.location='?disciplina='+encodeURIComponent(this.value);"
+                required>
           <option value="">-- Selecciona --</option>
           {% for d in disciplinas %}
-            <option value="{{ d.id }}">{{ d.nombre }}</option>
+            <option value="{{ d.id }}"
+              {% if disc_sel|default_if_none:''|stringformat:'s' == d.id|stringformat:'s' %}selected{% endif %}>
+              {{ d.nombre }}
+            </option>
           {% endfor %}
         </select>
       </div>
+
+      <!-- Actividad: ya filtradas y excluidas las que tienen asistencia -->
       <div class="col-md-6">
-        <label class="form-label">Actividad</label>
-        <select name="actividad" class="form-select" required>
-          <option value="">-- Selecciona --</option>
+        <label class="form-label fw-semibold">Actividad</label>
+        <select form="form-continuar" name="actividad" class="form-select" required {% if not disc_sel %}disabled{% endif %}>
+          <option value="">
+            {% if not disc_sel %}
+              Selecciona una disciplina primero
+            {% else %}
+              -- Selecciona una actividad disponible --
+            {% endif %}
+          </option>
           {% for a in actividades %}
-            <option value="{{ a.id }}">{{ a.nombre }} — {{ a.disciplina.nombre }}</option>
+            <option value="{{ a.id }}">{{ a.nombre }}</option>
+          {% empty %}
+            {% if disc_sel %}
+              <option value="">(No hay actividades disponibles: ya tienen asistencia)</option>
+            {% endif %}
           {% endfor %}
         </select>
+        
       </div>
     </div>
 
-    <div class="d-flex justify-content-between mt-4">
-      <!-- 🔙 Botón para volver al Dashboard -->
-      <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
-        Volver al panel principal
-      </a>
-
-      <!-- ✅ Botón para continuar -->
-      <button type="submit" class="btn btn-primary">
+    <!-- Botones dentro de la misma tarjeta -->
+    <form id="form-continuar" method="post" class="d-flex justify-content-end mt-4">
+      {% csrf_token %}
+      <input type="hidden" name="disciplina" value="{{ disc_sel|default_if_none:'' }}">
+      <a href="{% url 'asistencia_listar' %}" class="btn btn-outline-secondary me-2">Volver</a>
+      <button type="submit" class="btn btn{% if disc_sel %}-success{% else %}-secondary disabled{% endif %}">
         Continuar
       </button>
-    </div>
-  </form>
+    </form>
+  </div>
 </div>
 {% endblock %}
-

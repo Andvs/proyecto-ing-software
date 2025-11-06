@@ -48,6 +48,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'proyecto_escuela.urls'
 
+
+USE_TZ = True
+TIME_ZONE = "America/Santiago"
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -60,6 +64,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'app.context_processors.agregar_usuario_a_contexto',
+                "django.template.context_processors.tz"
             ],
         },
     },

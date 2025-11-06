@@ -1,54 +1,105 @@
-{% extends "base.html" %}
+{% extends "dashboard_base.html" %}
 {% block titulo %}Marcar asistencia{% endblock %}
+
 {% block contenido %}
 <div class="container py-4">
-  <h2 class="mb-1">Asistencia — {{ actividad.nombre }}</h2>
-  <p class="text-muted">Disciplina: <strong>{{ disciplina.nombre }}</strong></p>
-
-  <form method="post" class="card p-3 shadow-sm">
-  {% csrf_token %}
-
-  {% if not estudiantes %}
-    <div class="alert alert-info mb-3">
-      No hay estudiantes inscritos activos en esta disciplina. No es posible registrar asistencia.
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2">
+    <div>
+      <h2 class="mb-1">Asistencia — {{ actividad.nombre }}</h2>
+      <p class="text-muted mb-0">
+        Disciplina: <strong>{{ disciplina.nombre }}</strong> ·
+        Fecha sesión: <strong>{{ fecha_obj|date:"d-m-Y" }}</strong>
+      </p>
     </div>
-  {% endif %}
+    <div class="mt-3 mt-md-0">
+      <a href="{% url 'asistencia_listar' %}" class="btn btn-outline-secondary">Volver al listado</a>
+    </div>
+  </div>
 
-  <div class="table-responsive">
-    <table class="table table-sm align-middle">
-      <thead>
-        <tr>
-          <th>Alumno</th>
-          <th class="text-center" style="width: 160px;">Presente</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% if estudiantes %}
-          {% for e in estudiantes %}
+  <form method="post" class="card shadow-sm">
+    {% csrf_token %}
+    <div class="card-body">
+
+      {% if not estudiantes %}
+        <div class="alert alert-info mb-3">
+          No hay estudiantes inscritos activos en esta disciplina. No es posible registrar asistencia.
+        </div>
+      {% endif %}
+
+      <!-- Acciones rápidas -->
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-sm-6 d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btnSelectAll">Seleccionar todo</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSelectNone">Ninguno</button>
+        </div>
+        <div class="col-sm-6">
+          <input type="text" id="filtroAlumno" class="form-control form-control-sm"
+                 placeholder="Filtrar alumnos por nombre o usuario…">
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
             <tr>
-              <td>{{ e.perfil.user.get_full_name|default:e.perfil.user.username }}</td>
-              <td class="text-center">
-                <input type="checkbox"
-                       name="presentes"
-                       value="{{ e.perfil_id }}"
-                       class="form-check-input"
-                       {% if e.perfil_id in presentes_ids_hoy %}checked{% endif %}>
-              </td>
+              <th>Alumno</th>
+              <th class="text-center" style="width: 140px;">Presente</th>
             </tr>
-          {% endfor %}
-        {% else %}
-          <tr><td colspan="2" class="text-center text-muted">Sin estudiantes.</td></tr>
-        {% endif %}
-      </tbody>
-    </table>
-  </div>
+          </thead>
+          <tbody id="tablaAlumnos">
+            {% for e in estudiantes %}
+              {% with nombre=e.perfil.user.get_full_name|default:e.perfil.user.username %}
+              <tr data-alumno="{{ nombre|lower }}">
+                <td>
+                  {{ nombre }}
+                  <div class="small text-muted">@{{ e.perfil.user.username }}</div>
+                </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                         name="presentes"
+                         value="{{ e.perfil_id }}"
+                         class="form-check-input alumno-check"
+                         {% if e.perfil_id in presentes_ids_hoy %}checked{% endif %}>
+                </td>
+              </tr>
+              {% endwith %}
+            {% empty %}
+              <tr><td colspan="2" class="text-center text-muted">Sin estudiantes.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-  <div class="d-flex justify-content-between mt-3">
-    <a href="{% url 'asistencia_seleccionar' %}" class="btn btn-outline-secondary">Volver</a>
-    <button type="submit" class="btn btn-primary" {% if not estudiantes %}disabled{% endif %}>
-      Guardar asistencia
-    </button>
-  </div>
-</form>
+      <div class="d-flex justify-content-between mt-3">
+        <a href="{% url 'asistencia_seleccionar' %}" class="btn btn-outline-secondary">Volver</a>
+        <button type="submit" class="btn btn-primary" {% if not estudiantes %}disabled{% endif %}>
+          Guardar asistencia
+        </button>
+      </div>
+    </div>
+  </form>
 </div>
+
+<script>
+  (function(){
+    const $ = (q, ctx=document) => ctx.querySelector(q);
+    const $$ = (q, ctx=document) => Array.from(ctx.querySelectorAll(q));
+
+    const filtro = $("#filtroAlumno");
+    if (filtro) {
+      filtro.addEventListener("input", function(){
+        const term = this.value.trim().toLowerCase();
+        $$("#tablaAlumnos tr").forEach(tr => {
+          const hay = tr.getAttribute("data-alumno") || "";
+          tr.style.display = hay.includes(term) ? "" : "none";
+        });
+      });
+    }
+
+    const btnAll  = $("#btnSelectAll");
+    const btnNone = $("#btnSelectNone");
+    if (btnAll)  btnAll.addEventListener("click", () => $$(".alumno-check").forEach(ch => ch.checked = true));
+    if (btnNone) btnNone.addEventListener("click", () => $$(".alumno-check").forEach(ch => ch.checked = false));
+  })();
+</script>
 {% endblock %}
