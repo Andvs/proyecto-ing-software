@@ -13,13 +13,13 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required
 
 # Formularios
-from .forms import *
+from app.forms import *
 
 # Modelos
-from .models import *
+from app.models import *
 
 # Decorador
-from .decorators import rol_requerido
+from app.decorators import rol_requerido
 
 
 # ============== PÚBLICAS / AUTH ==============
@@ -197,7 +197,6 @@ def editar_usuario(request, pk):
     if request.method == "POST":
         user_form = UserForm(request.POST, instance=perfil.user)
         if not request.POST.get("password"):
-            # si no enviaron password, elimina el campo para no sobrescribirlo
             user_form.fields.pop("password", None)
 
         perfil_form = PerfilForm(request.POST, instance=perfil)
@@ -230,9 +229,6 @@ def editar_usuario(request, pk):
 # ASISTENCIA (con Sesión) 
 # -----------------------------------------------------
 
-# -----------------------------
-# Helper: sesiones de asistencia (lista)
-# -----------------------------
 def _query_sesiones_asistencia(filtros):
     """
     Devuelve un QS de SesionAsistencia con conteo de presentes y
@@ -241,7 +237,6 @@ def _query_sesiones_asistencia(filtros):
     qs = (SesionAsistencia.objects
           .select_related('actividad__disciplina', 'marcaje_por__user'))
 
-    # Filtros: disciplina, actividad, desde, hasta, estudiante_q
     disc_id = filtros.get('disciplina')
     act_id  = filtros.get('actividad')
     f_ini   = filtros.get('desde')
@@ -257,7 +252,6 @@ def _query_sesiones_asistencia(filtros):
     if f_fin:
         qs = qs.filter(fecha__lte=f_fin)
 
-    # Búsqueda por estudiante presente en la sesión
     if est_q:
         qs = qs.filter(
             Q(detalles__usuario__user__first_name__icontains=est_q) |
@@ -271,15 +265,11 @@ def _query_sesiones_asistencia(filtros):
     return qs
 
 
-# -----------------------------
-# LISTAR sesiones
-# -----------------------------
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_listar(request):
     disciplinas = Disciplina.objects.all().order_by('nombre')
     actividades = ActividadDeportiva.objects.select_related('disciplina').order_by('-fecha_inicio')
 
-    # Leer filtros del GET
     filtros = {
         'disciplina': request.GET.get('disciplina') or None,
         'actividad':  request.GET.get('actividad') or None,
@@ -288,7 +278,6 @@ def asistencia_listar(request):
         'estudiante_q': request.GET.get('q') or '',
     }
 
-    # Normalizar fechas
     try:
         if filtros['desde']:
             filtros['desde'] = datetime.strptime(filtros['desde'], '%Y-%m-%d').date()
@@ -309,9 +298,6 @@ def asistencia_listar(request):
     return render(request, 'asistencia/listar.html', context)
 
 
-# -----------------------------
-# VER estudiantes presentes (por sesión)
-# -----------------------------
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_ver_estudiantes(request, actividad_id: int, fecha: str):
     fecha_date = datetime.strptime(fecha, '%Y-%m-%d').date()
@@ -326,15 +312,11 @@ def asistencia_ver_estudiantes(request, actividad_id: int, fecha: str):
         'actividad': actividad,
         'fecha': fecha_date,
         'sesion': sesion,
-        'detalles': presentes_qs,                 # <— lista (queryset)
-        'presentes_count': presentes_qs.count(),  # <— entero
+        'detalles': presentes_qs,
+        'presentes_count': presentes_qs.count(),
     })
 
 
-
-# -----------------------------
-# EDITAR (re-marcar) una sesión
-# -----------------------------
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_editar(request, actividad_id: int, fecha: str):
     """
@@ -342,20 +324,15 @@ def asistencia_editar(request, actividad_id: int, fecha: str):
     asegurando que la sesión exista (aunque termine con 0 presentes).
     """
     request.GET = request.GET.copy()
-    request.GET['fecha'] = fecha  # para reutilizar la misma vista
+    request.GET['fecha'] = fecha
     return asistencia_marcar(request, actividad_id)
 
-
-# -----------------------------
-# CANCELAR una sesión (eliminar encabezado + detalles)
-# -----------------------------
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 @require_POST
 def asistencia_toggle_activa(request, actividad_id: int, fecha: str):
     """
     Alterna el estado activo/inactivo de una sesión de asistencia.
-    No elimina registros, solo marca como deshabilitada o habilitada.
     """
     fecha_date = datetime.strptime(fecha, '%Y-%m-%d').date()
     actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
@@ -369,10 +346,6 @@ def asistencia_toggle_activa(request, actividad_id: int, fecha: str):
     return redirect(request.POST.get("next") or "asistencia_listar")
 
 
-
-# -----------------------------
-# MARCAR/EDITAR asistencia (usa sesión)
-# -----------------------------
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_marcar(request, actividad_id: int):
     actividad = get_object_or_404(
@@ -396,7 +369,6 @@ def asistencia_marcar(request, actividad_id: int):
     )
     estudiantes = [insc.estudiante for insc in inscripciones]
 
-    # fecha objetivo (?fecha=AAAA-MM-DD) — default: hoy
     fecha_param = (request.GET.get('fecha') or request.GET.get('date') or None)
     if fecha_param:
         try:
@@ -407,7 +379,6 @@ def asistencia_marcar(request, actividad_id: int):
     else:
         fecha_obj = timezone.localdate()
 
-    # obtener/crear sesión (existe aunque queden 0 presentes)
     try:
         marcaje_por = request.user.perfil
     except Perfil.DoesNotExist:
@@ -424,7 +395,7 @@ def asistencia_marcar(request, actividad_id: int):
             ),
         }
     )
-    # si ya existía y la fecha cambió (caso extremo), sincroniza metadatos
+
     if sesion.fecha != fecha_obj:
         sesion.fecha = fecha_obj
         if sesion.marcaje_por is None:
@@ -440,10 +411,8 @@ def asistencia_marcar(request, actividad_id: int):
 
         presentes_ids = set(map(int, request.POST.getlist("presentes")))
         with transaction.atomic():
-            # Reemplaza SOLO los detalles de esta sesión
             Asistencia.objects.filter(sesion=sesion).delete()
 
-            # Hora real (aware). Django guardará en UTC; se mostrará en TZ con el filtro.
             ahora = timezone.now()
             creados = 0
             for est in estudiantes:
@@ -451,8 +420,8 @@ def asistencia_marcar(request, actividad_id: int):
                     Asistencia.objects.create(
                         sesion=sesion,
                         usuario=est.perfil,
-                        actividad=actividad,       # compatibilidad/reportes
-                        fecha_hora_marcaje=ahora,  # hora real del marcaje
+                        actividad=actividad,
+                        fecha_hora_marcaje=ahora,
                         marcaje_por=marcaje_por or sesion.marcaje_por,
                         entrenador=sesion.entrenador,
                     )
@@ -464,7 +433,6 @@ def asistencia_marcar(request, actividad_id: int):
         )
         return redirect("asistencia_listar")
 
-    # Checkboxes preseleccionados con lo ya marcado
     presentes_ids_fecha = set(
         Asistencia.objects.filter(sesion=sesion)
         .values_list("usuario_id", flat=True)
@@ -479,22 +447,16 @@ def asistencia_marcar(request, actividad_id: int):
     })
 
 
-# -----------------------------
-# Seleccionar disciplina/actividad (excluye ocupadas)
-# -----------------------------
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_seleccionar(request):
     """
     Paso 1: seleccionar Disciplina y Actividad.
     - Muestra SOLO actividades que NO tengan sesión creada.
-    - POST valida y redirige a marcar.
     """
     disciplinas = Disciplina.objects.all().order_by("nombre")
 
-    # disciplina seleccionada (GET para filtrar en vivo; POST para envío final)
     disc_sel = request.GET.get("disciplina") or request.POST.get("disciplina")
 
-    # Query base de actividades
     actividades_qs = (ActividadDeportiva.objects
                       .select_related("disciplina")
                       .order_by("-fecha_inicio"))
@@ -502,7 +464,6 @@ def asistencia_seleccionar(request):
     if disc_sel:
         actividades_qs = actividades_qs.filter(disciplina_id=disc_sel)
 
-    # Excluir actividades que YA tengan sesión
     ocupadas_ids = SesionAsistencia.objects.values_list("actividad_id", flat=True)
     actividades_qs = actividades_qs.exclude(id__in=ocupadas_ids)
 
@@ -518,7 +479,6 @@ def asistencia_seleccionar(request):
 
         actividad = get_object_or_404(ActividadDeportiva, pk=act_id)
 
-        # Seguridad: actividad debe pertenecer a esa disciplina
         if str(actividad.disciplina_id) != str(disc_sel):
             messages.error(request, "La actividad no pertenece a la disciplina seleccionada.")
             return render(request, "asistencia/seleccionar.html", {
@@ -527,7 +487,6 @@ def asistencia_seleccionar(request):
                 "disc_sel": disc_sel,
             })
 
-        # Seguridad: bloquear si ya tiene sesión (por si fuerzan POST)
         if SesionAsistencia.objects.filter(actividad=actividad).exists():
             messages.warning(request, "Esta actividad ya tiene una asistencia registrada.")
             return render(request, "asistencia/seleccionar.html", {
@@ -581,6 +540,7 @@ def lista_disciplinas(request):
         'search_query': search_query,
     })
 
+
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin', 'Coordinador Deportivo'])
 def editar_disciplina(request, pk):
     disciplina = get_object_or_404(Disciplina, pk=pk)
@@ -605,3 +565,140 @@ def eliminar_disciplina(request, pk):
     except Exception as e:
         messages.error(request, f'Error al eliminar la disciplina: {e}')
     return redirect('lista_disciplinas')
+
+
+# -----------------------------------------------------
+# ACTIVIDADES DEPORTIVAS
+# -----------------------------------------------------
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin', 'Coordinador Deportivo'])
+def crear_actividad(request):
+    if request.method == 'POST':
+        form = ActividadDeportivaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Actividad deportiva registrada con éxito!')
+            return redirect('lista_actividades')
+    else:
+        form = ActividadDeportivaForm()
+    return render(request, 'actividades/crear.html', {'form': form})
+
+
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin', 'Coordinador Deportivo'])
+def lista_actividades(request):
+    search_query = request.GET.get('q', '')
+    actividades_list = ActividadDeportiva.objects.select_related('disciplina').order_by('-fecha_inicio')
+
+    if search_query:
+        actividades_list = actividades_list.filter(
+            Q(nombre__icontains=search_query) |
+            Q(disciplina__nombre__icontains=search_query) |
+            Q(lugar__icontains=search_query)
+        )
+
+    paginator = Paginator(actividades_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'actividades/lista.html', {
+        'page_obj': page_obj,
+        'search_query': search_query,
+    })
+
+
+@rol_requerido(roles_permitidos=['Entrenador', 'Admin', 'Coordinador Deportivo'])
+def editar_actividad(request, pk):
+    actividad = get_object_or_404(ActividadDeportiva, pk=pk)
+    if request.method == 'POST':
+        form = ActividadDeportivaForm(request.POST, instance=actividad)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Actividad deportiva actualizada con éxito!')
+            return redirect('lista_actividades')
+    else:
+        form = ActividadDeportivaForm(instance=actividad)
+    return render(request, 'actividades/editar.html', {'form': form, 'actividad': actividad})
+
+
+@require_POST
+def eliminar_actividad(request, pk):
+    actividad = get_object_or_404(ActividadDeportiva, pk=pk)
+    try:
+        nombre_actividad = actividad.nombre
+        actividad.delete()
+        messages.success(request, f'¡Actividad "{nombre_actividad}" eliminada con éxito!')
+    except Exception as e:
+        messages.error(request, f'Error al eliminar la actividad: {e}')
+    return redirect('lista_actividades')
+
+
+# -----------------------------------------------------
+# INSCRIPCIONES
+# -----------------------------------------------------
+@rol_requerido(roles_permitidos=['Admin', 'Coordinador Deportivo'])
+def crear_inscripcion(request):
+    if request.method == 'POST':
+        form = InscripcionForm(request.POST)
+        if form.is_valid():
+            try:
+                form.save()
+                messages.success(request, '¡Estudiante inscrito con éxito!')
+                return redirect('lista_inscripciones')
+            except Exception as e:
+                messages.error(request, f'Error al inscribir: {e}')
+    else:
+        form = InscripcionForm()
+    return render(request, 'inscripciones/crear.html', {'form': form})
+
+
+@rol_requerido(roles_permitidos=['Admin', 'Coordinador Deportivo', 'Entrenador'])
+def lista_inscripciones(request):
+    search_query = request.GET.get('q', '')
+    inscripciones_list = Inscripcion.objects.select_related(
+        'estudiante__perfil__user', 
+        'disciplina'
+    ).order_by('-fecha_inscripcion')
+
+    if search_query:
+        inscripciones_list = inscripciones_list.filter(
+            Q(estudiante__perfil__user__first_name__icontains=search_query) |
+            Q(estudiante__perfil__user__last_name__icontains=search_query) |
+            Q(estudiante__perfil__user__username__icontains=search_query) |
+            Q(disciplina__nombre__icontains=search_query)
+        )
+
+    paginator = Paginator(inscripciones_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'inscripciones/lista.html', {
+        'page_obj': page_obj,
+        'search_query': search_query,
+    })
+
+
+@rol_requerido(roles_permitidos=['Admin', 'Coordinador Deportivo'])
+def editar_inscripcion(request, pk):
+    inscripcion = get_object_or_404(Inscripcion, pk=pk)
+    if request.method == 'POST':
+        form = InscripcionForm(request.POST, instance=inscripcion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '¡Inscripción actualizada con éxito!')
+            return redirect('lista_inscripciones')
+    else:
+        form = InscripcionForm(instance=inscripcion)
+    return render(request, 'inscripciones/editar.html', {'form': form, 'inscripcion': inscripcion})
+
+
+@rol_requerido(roles_permitidos=['Admin', 'Coordinador Deportivo'])
+@require_POST
+def eliminar_inscripcion(request, pk):
+    inscripcion = get_object_or_404(Inscripcion, pk=pk)
+    try:
+        estudiante = inscripcion.estudiante.perfil.user.get_full_name()
+        disciplina = inscripcion.disciplina.nombre
+        inscripcion.delete()
+        messages.success(request, f'¡Inscripción de {estudiante} en {disciplina} eliminada con éxito!')
+    except Exception as e:
+        messages.error(request, f'Error al eliminar la inscripción: {e}')
+    return redirect('lista_inscripciones')

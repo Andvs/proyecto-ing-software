@@ -1,0 +1,70 @@
+{% extends "dashboard_base.html" %}
+{% block titulo %}Editar Actividad Deportiva{% endblock %}
+
+{% block contenido %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-lg">
+        <div class="card-header text-center py-3">
+          <h3 class="fw-bold mb-0">Editar Actividad Deportiva</h3>
+        </div>
+        <div class="card-body p-4">
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+              {{ form.nombre.label_tag }}
+              {{ form.nombre }}
+              {% for e in form.nombre.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.disciplina.label_tag }}
+              {{ form.disciplina }}
+              {% for e in form.disciplina.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                {{ form.fecha_inicio.label_tag }}
+                {{ form.fecha_inicio }}
+                {% for e in form.fecha_inicio.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              </div>
+
+              <div class="col-md-6 mb-3">
+                {{ form.fecha_fin.label_tag }}
+                {{ form.fecha_fin }}
+                <div class="form-text small">Opcional</div>
+                {% for e in form.fecha_fin.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+
+            <div class="mb-3">
+              {{ form.lugar.label_tag }}
+              {{ form.lugar }}
+              {% for e in form.lugar.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="text-center mt-4">
+              <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">Actualizar</button>
+              <a href="{% url 'lista_actividades' %}" class="btn btn-outline-secondary btn-lg px-4 ms-2">Cancelar</a>
+            </div>
+            
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

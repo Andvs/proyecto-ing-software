@@ -59,12 +59,12 @@
         <a href="{% url 'crear_disciplina' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
             <div class="icon mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
-                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-trophy-fill" viewBox="0 0 16 16">
+                <path d="M2.5.5A.5.5 0 0 1 3 0h10a.5.5 0 0 1 .5.5c0 .538-.012 1.05-.034 1.536a3 3 0 1 1-1.133 5.89c-.79 1.865-1.878 2.777-2.833 3.011v2.173l1.425.356c.194.048.377.135.537.255L13.3 15.1a.5.5 0 0 1-.3.9H3a.5.5 0 0 1-.3-.9l1.838-1.379c.16-.12.343-.207.537-.255L6.5 13.11v-2.173c-.955-.234-2.043-1.146-2.833-3.012a3 3 0 1 1-1.132-5.89A33.076 33.076 0 0 1 2.5.5m.099 2.54a2 2 0 0 0 .72 3.935c-.333-1.05-.588-2.346-.72-3.935zm10.083 3.935a2 2 0 0 0 .72-3.935c-.133 1.59-.388 2.885-.72 3.935z"/>
               </svg>
             </div>
             <h3 class="card-title mt-2">Crear disciplina</h3>
-            <p class="card-text text-muted">Crear una nueva disiplina en el sistema</p>
+            <p class="card-text text-muted">Crear una nueva disciplina en el sistema</p>
           </div>
         </a>
       </div>
@@ -73,38 +73,85 @@
         <a href="{% url 'lista_disciplinas' %}" class="card action-card text-decoration-none shadow-sm h-100">
           <div class="card-body text-center p-5">
             <div class="icon mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
-                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-list-ul" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m-3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2m0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2m0 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/>
               </svg>
             </div>
             <h3 class="card-title mt-2">Disciplinas</h3>
-            <p class="card-text text-muted">Ver y administrar la lista de disiplinas</p>
+            <p class="card-text text-muted">Ver y administrar la lista de disciplinas</p>
           </div>
         </a>
       </div>
     {% endif %}
 
-    {# ====== Inscribir estudiante (Admin y Coordinador) — por implementar ====== #}
+    {# ====== ACTIVIDADES (Admin y Coordinador) ====== #}
+    {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' or request.user.perfil.rol.nombre == 'Coordinador Deportivo' %}
+      <div class="col-12 text-center mt-4">
+        <h3 class="section-title fw-bold mb-3">Actividades Deportivas</h3>
+      </div>
+
+      <div class="col-md-5">
+        <a href="{% url 'crear_actividad' %}" class="card action-card text-decoration-none shadow-sm h-100">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-calendar-plus-fill" viewBox="0 0 16 16">
+                <path d="M4 .5a.5.5 0 0 0-1 0V1H2a2 2 0 0 0-2 2v1h16V3a2 2 0 0 0-2-2h-1V.5a.5.5 0 0 0-1 0V1H4zM16 14V5H0v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M8.5 8.5V10H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V11H6a.5.5 0 0 1 0-1h1.5V8.5a.5.5 0 0 1 1 0"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Crear actividad</h3>
+            <p class="card-text text-muted">Registrar una nueva actividad deportiva.</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-md-5">
+        <a href="{% url 'lista_actividades' %}" class="card action-card text-decoration-none shadow-sm h-100">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-calendar3" viewBox="0 0 16 16">
+                <path d="M14 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M1 3.857C1 3.384 1.448 3 2 3h12c.552 0 1 .384 1 .857v10.286c0 .473-.448.857-1 .857H2c-.552 0-1-.384-1-.857z"/>
+                <path d="M6.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Actividades</h3>
+            <p class="card-text text-muted">Ver y administrar actividades deportivas.</p>
+          </div>
+        </a>
+      </div>
+    {% endif %}
+
+    {# ====== Inscripciones (Admin y Coordinador) ====== #}
     {% if request.user.is_superuser or request.user.perfil.rol.nombre == 'Admin' or request.user.perfil.rol.nombre == 'Coordinador Deportivo' %}
       <div class="col-12 text-center mt-4">
         <h3 class="section-title fw-bold mb-3">Inscripciones</h3>
       </div>
 
-      <div class="col-md-10">
-        <a href="#" class="card action-card text-decoration-none shadow-sm h-100 todo-link">
-          <div class="card-body d-flex align-items-center justify-content-between p-4">
-            <div class="d-flex align-items-center gap-3">
-              <div class="icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
-                  <path d="M15.854 5.146a.5.5 0 0 0-.708-.708L10.5 9.085 9.354 7.94a.5.5 0 1 0-.708.707l1.5 1.5a.5.5 0 0 0 .708 0l5-5z"/>
-                  <path d="M1 14s-1 0-1-1 1-4 6-4c.61 0 1.17.042 1.675.12a5.5 5.5 0 0 0-.675 1.88C5.062 10.334 4 11 4 13H1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
-                </svg>
-              </div>
-              <div>
-                <h4 class="mb-1">Inscribir estudiante a actividad</h4>
-                <p class="mb-0 text-muted">Próximamente (no implementado).</p>
-              </div>
+      <div class="col-md-5">
+        <a href="{% url 'crear_inscripcion' %}" class="card action-card text-decoration-none shadow-sm h-100">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
+                <path d="M15.854 5.146a.5.5 0 0 0-.708-.708L10.5 9.085 9.354 7.94a.5.5 0 1 0-.708.707l1.5 1.5a.5.5 0 0 0 .708 0l5-5z"/>
+                <path d="M1 14s-1 0-1-1 1-4 6-4c.61 0 1.17.042 1.675.12a5.5 5.5 0 0 0-.675 1.88C5.062 10.334 4 11 4 13H1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+              </svg>
             </div>
+            <h3 class="card-title mt-2">Inscribir estudiante</h3>
+            <p class="card-text text-muted">Inscribir a un estudiante en una disciplina.</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-md-5">
+        <a href="{% url 'lista_inscripciones' %}" class="card action-card text-decoration-none shadow-sm h-100">
+          <div class="card-body text-center p-5">
+            <div class="icon mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-card-checklist" viewBox="0 0 16 16">
+                <path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"/>
+                <path d="M7 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 1 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0M7 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m-1.496-.854a.5.5 0 0 1 0 .708l-1.5 1.5a.5.5 0 0 1-.708 0l-.5-.5a.5.5 0 0 1 .708-.708l.146.147 1.146-1.147a.5.5 0 0 1 .708 0"/>
+              </svg>
+            </div>
+            <h3 class="card-title mt-2">Inscripciones</h3>
+            <p class="card-text text-muted">Ver y administrar inscripciones.</p>
           </div>
         </a>
       </div>
@@ -138,7 +185,7 @@
 
     {# =================== COORDINADOR – Panel e informes =================== #}
     {% if request.user.perfil.rol.nombre == 'Coordinador Deportivo' %}
-      <div class="col-12 text-center">
+      <div class="col-12 text-center mt-4">
         <h3 class="section-title fw-bold mb-3">Coordinación deportiva</h3>
       </div>
 
@@ -168,39 +215,6 @@
             </div>
             <h3 class="card-title mt-2">Informes y evaluaciones</h3>
             <p class="card-text text-muted">Informes de asistencia/evaluaciones (no implementado).</p>
-          </div>
-        </a>
-      </div>
-
-      <!-- Gestión de Disciplinas también visible para Coordinador -->
-      <div class="col-12 text-center mt-4">
-        <h3 class="section-title fw-bold mb-3">Gestión de Disciplinas</h3>
-      </div>
-
-      <div class="col-md-5">
-        <a href="{% url 'crear_disciplina' %}" class="card action-card text-decoration-none shadow-sm h-100">
-          <div class="card-body text-center p-5">
-            <div class="icon mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
-                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
-              </svg>
-            </div>
-            <h3 class="card-title mt-2">Crear disciplina</h3>
-            <p class="card-text text-muted">Registrar una nueva disciplina deportiva.</p>
-          </div>
-        </a>
-      </div>
-
-      <div class="col-md-5">
-        <a href="{% url 'lista_disciplinas' %}" class="card action-card text-decoration-none shadow-sm h-100">
-          <div class="card-body text-center p-5">
-            <div class="icon mb-2">
-              <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
-                <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
-              </svg>
-            </div>
-            <h3 class="card-title mt-2">Disciplinas</h3>
-            <p class="card-text text-muted">Ver y administrar la lista de disciplinas.</p>
           </div>
         </a>
       </div>
