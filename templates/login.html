@@ -29,38 +29,33 @@
 
                 <div class="card-body">
 
-                    <!-- Formulario de Login -->
                     <form method="POST" action="{% url 'login' %}">
                         {% csrf_token %}
-                        {{ form.non_field_errors }}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
 
                         <div class="form-floating mb-3">
-                            <input 
-                                type="text" 
-                                name="username" 
-                                class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
-                                id="id_username" 
-                                placeholder="Ingrese su usuario" 
-                                value="{{ form.username.value|default:'' }}" 
-                                required>
-                            <label for="id_username">Usuario</label>
-                            {% for error in form.username.errors %}
-                                <div class="invalid-feedback">{{ error }}</div>
-                            {% endfor %}
+                            {{ form.username }}
+                            <label for="{{ form.username.id_for_label }}">Usuario</label>
+                            {% if form.username.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.username.errors.0 }}
+                                </div>
+                            {% endif %}
                         </div>
 
                         <div class="form-floating mb-3">
-                            <input 
-                                type="password" 
-                                name="password" 
-                                class="form-control {% if form.password.errors %}is-invalid{% endif %}" 
-                                id="id_password" 
-                                placeholder="Ingrese su contraseña" 
-                                required>
-                            <label for="id_password">Contraseña</label>
-                            {% for error in form.password.errors %}
-                                <div class="invalid-feedback">{{ error }}</div>
-                            {% endfor %}
+                            {{ form.password }}
+                            <label for="{{ form.password.id_for_label }}">Contraseña</label>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.password.errors.0 }}
+                                </div>
+                            {% endif %}
                         </div>
 
                         <div class="d-grid mt-4">

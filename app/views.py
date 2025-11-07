@@ -12,13 +12,8 @@ from datetime import datetime
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 
-# Formularios
 from app.forms import *
-
-# Modelos
 from app.models import *
-
-# Decorador
 from app.decorators import rol_requerido
 
 
@@ -28,33 +23,31 @@ def index(request):
 
 
 def login_view(request):
-    """
-    Login usando auth de Django + chequeo de Perfil.activo.
-    Espera en el form: username, password.
-    """
     if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        password = request.POST.get("password", "")
-
-        user = authenticate(request, username=username, password=password)
-        if user is None:
+        form = PerfilAuthForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(request, username=username, password=password)
+            
+            if user is not None:
+                try:
+                    perfil = user.perfil
+                    if not perfil.activo:
+                        messages.error(request, "Tu cuenta está deshabilitada. Contacta a un administrador.")
+                        return redirect("login")
+                except Perfil.DoesNotExist:
+                    pass
+                
+                auth_login(request, user)
+                messages.success(request, f"¡Bienvenido, {user.get_full_name() or user.username}!")
+                return redirect("dashboard")
+        else:
             messages.error(request, "Usuario o contraseña inválidos.")
-            return redirect("login")
-
-        # Chequeo Perfil.activo (si existe Perfil)
-        try:
-            perfil = user.perfil
-            if not perfil.activo:
-                messages.error(request, "Tu cuenta está deshabilitada. Contacta a un administrador.")
-                return redirect("login")
-        except Perfil.DoesNotExist:
-            pass
-
-        auth_login(request, user)
-        messages.success(request, f"¡Bienvenido, {user.get_full_name() or user.username}!")
-        return redirect("dashboard")
-
-    return render(request, "login.html")
+    else:
+        form = PerfilAuthForm()
+    
+    return render(request, "login.html", {"form": form})
 
 
 @login_required
@@ -73,18 +66,16 @@ def dashboard(request):
 @rol_requerido(roles_permitidos=['Admin'])
 def registrar_usuario(request):
     if request.method == 'POST':
-        # Botón "Cancelar"
         if request.POST.get('cancelar'):
             return redirect('dashboard')
 
-        user_form   = UserForm(request.POST)
+        user_form   = UserForm(request.POST, is_edit=False)
         perfil_form = PerfilForm(request.POST)
         est_form    = EstudianteForm(request.POST)
 
         user_ok   = user_form.is_valid()
         perfil_ok = perfil_form.is_valid()
 
-        # ¿Rol = Estudiante?
         rol_es_estudiante = False
         if perfil_ok:
             rol_sel = perfil_form.cleaned_data.get('rol')
@@ -94,34 +85,34 @@ def registrar_usuario(request):
         est_ok = (not rol_es_estudiante) or est_form.is_valid()
 
         if user_ok and perfil_ok and est_ok:
-            with transaction.atomic():
-                # 1) User
-                user = user_form.save(commit=False)
-                raw_password = user.password
-                user.set_password(raw_password)
-                user.save()
+            try:
+                with transaction.atomic():
+                    user = user_form.save(commit=False)
+                    raw_password = user_form.cleaned_data['password']
+                    user.set_password(raw_password)
+                    user.save()
 
-                # 2) Perfil
-                perfil = perfil_form.save(commit=False)
-                perfil.user = user
-                perfil.save()
+                    perfil = perfil_form.save(commit=False)
+                    perfil.user = user
+                    perfil.save()
 
-                # 3) Estudiante (opcional)
-                if rol_es_estudiante:
-                    Estudiante.objects.update_or_create(
-                        perfil=perfil,
-                        defaults={
-                            'curso': est_form.cleaned_data['curso'],
-                            'fecha_ingreso': est_form.cleaned_data['fecha_ingreso'],
-                        },
-                    )
+                    if rol_es_estudiante:
+                        Estudiante.objects.update_or_create(
+                            perfil=perfil,
+                            defaults={
+                                'curso': est_form.cleaned_data['curso'],
+                                'fecha_ingreso': est_form.cleaned_data['fecha_ingreso'],
+                            },
+                        )
 
-            messages.success(request, "Usuario registrado correctamente.")
-            return redirect('lista_usuarios')
+                messages.success(request, "Usuario registrado correctamente.")
+                return redirect('lista_usuarios')
+            except Exception as e:
+                messages.error(request, f"Error al registrar usuario: {str(e)}")
         else:
             messages.error(request, "Revisa los datos del formulario.")
     else:
-        user_form   = UserForm()
+        user_form   = UserForm(is_edit=False)
         perfil_form = PerfilForm()
         est_form    = EstudianteForm()
 
@@ -134,12 +125,7 @@ def registrar_usuario(request):
 
 @rol_requerido(roles_permitidos=['Admin'])
 def lista_usuarios(request):
-    """
-    Listado con búsqueda por username/nombre/apellido/run/rol
-    y filtro por activo/inactivo (palabras naturales).
-    """
     q = (request.GET.get("q") or "").strip()
-
     perfiles = Perfil.objects.select_related("user", "rol").order_by("user__username")
 
     if q:
@@ -176,10 +162,6 @@ def lista_usuarios(request):
 @rol_requerido(roles_permitidos=['Admin'])
 @require_POST
 def perfil_toggle_activo(request, pk: int):
-    """
-    Alterna Perfil.activo (no toca User.is_active).
-    Redirige a la misma URL (mantiene paginación y búsqueda).
-    """
     perfil = get_object_or_404(Perfil.objects.select_related("user"), pk=pk)
     perfil.activo = not perfil.activo
     perfil.save(update_fields=["activo"])
@@ -194,28 +176,29 @@ def perfil_toggle_activo(request, pk: int):
 @rol_requerido(roles_permitidos=['Admin'])
 def editar_usuario(request, pk):
     perfil = get_object_or_404(Perfil.objects.select_related("user", "rol"), pk=pk)
+    
     if request.method == "POST":
-        user_form = UserForm(request.POST, instance=perfil.user)
-        if not request.POST.get("password"):
-            user_form.fields.pop("password", None)
-
+        user_form = UserForm(request.POST, instance=perfil.user, is_edit=True)
         perfil_form = PerfilForm(request.POST, instance=perfil)
 
         if user_form.is_valid() and perfil_form.is_valid():
-            user = user_form.save(commit=False)
-            if "password" in user_form.cleaned_data and user_form.cleaned_data["password"]:
-                user.set_password(user_form.cleaned_data["password"])
-            user.save()
-
-            perfil_form.save()
-            messages.success(request, "Usuario actualizado correctamente.")
-            return redirect("lista_usuarios")
+            try:
+                with transaction.atomic():
+                    user = user_form.save(commit=False)
+                    password = user_form.cleaned_data.get("password")
+                    if password:
+                        user.set_password(password)
+                    user.save()
+                    perfil_form.save()
+                    
+                messages.success(request, "Usuario actualizado correctamente.")
+                return redirect("lista_usuarios")
+            except Exception as e:
+                messages.error(request, f"Error al actualizar usuario: {str(e)}")
         else:
             messages.error(request, "Revisa los datos del formulario.")
     else:
-        user_form = UserForm(instance=perfil.user)
-        if "password" in user_form.fields:
-            user_form.fields["password"].widget.attrs["placeholder"] = "Dejar en blanco para no cambiar"
+        user_form = UserForm(instance=perfil.user, is_edit=True)
         perfil_form = PerfilForm(instance=perfil)
 
     return render(request, "usuarios/editar.html", {
@@ -230,10 +213,6 @@ def editar_usuario(request, pk):
 # -----------------------------------------------------
 
 def _query_sesiones_asistencia(filtros):
-    """
-    Devuelve un QS de SesionAsistencia con conteo de presentes y
-    datos básicos de actividad/disciplina/marcador.
-    """
     qs = (SesionAsistencia.objects
           .select_related('actividad__disciplina', 'marcaje_por__user'))
 
@@ -319,10 +298,6 @@ def asistencia_ver_estudiantes(request, actividad_id: int, fecha: str):
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_editar(request, actividad_id: int, fecha: str):
-    """
-    Reutiliza la pantalla de 'marcar', pero para una fecha concreta,
-    asegurando que la sesión exista (aunque termine con 0 presentes).
-    """
     request.GET = request.GET.copy()
     request.GET['fecha'] = fecha
     return asistencia_marcar(request, actividad_id)
@@ -331,9 +306,6 @@ def asistencia_editar(request, actividad_id: int, fecha: str):
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 @require_POST
 def asistencia_toggle_activa(request, actividad_id: int, fecha: str):
-    """
-    Alterna el estado activo/inactivo de una sesión de asistencia.
-    """
     fecha_date = datetime.strptime(fecha, '%Y-%m-%d').date()
     actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
     sesion = get_object_or_404(SesionAsistencia, actividad=actividad, fecha=fecha_date)
@@ -449,10 +421,6 @@ def asistencia_marcar(request, actividad_id: int):
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_seleccionar(request):
-    """
-    Paso 1: seleccionar Disciplina y Actividad.
-    - Muestra SOLO actividades que NO tengan sesión creada.
-    """
     disciplinas = Disciplina.objects.all().order_by("nombre")
 
     disc_sel = request.GET.get("disciplina") or request.POST.get("disciplina")

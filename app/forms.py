@@ -2,15 +2,20 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
+from django.core.exceptions import ValidationError
 from app.models import *
+import re
+from datetime import date
 
 class UserForm(forms.ModelForm):
     password = forms.CharField(
         label="Contraseña",
+        required=False,
         widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Ingresa una contraseña"})
     )
     password2 = forms.CharField(
         label="Repite la contraseña",
+        required=False,
         widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Repite la contraseña"})
     )
 
@@ -24,12 +29,95 @@ class UserForm(forms.ModelForm):
             "last_name":  forms.TextInput(attrs={"class": "form-control", "placeholder": "Apellidos"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.is_edit = kwargs.pop('is_edit', False)
+        super().__init__(*args, **kwargs)
+        if not self.is_edit:
+            self.fields['password'].required = True
+            self.fields['password2'].required = True
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username', '').strip()
+        if not username:
+            raise ValidationError("El nombre de usuario es obligatorio.")
+        if len(username) < 3:
+            raise ValidationError("El nombre de usuario debe tener al menos 3 caracteres.")
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            raise ValidationError("El nombre de usuario solo puede contener letras, números y guiones bajos.")
+        
+        if self.instance.pk:
+            if User.objects.exclude(pk=self.instance.pk).filter(username=username).exists():
+                raise ValidationError("Este nombre de usuario ya está en uso.")
+        else:
+            if User.objects.filter(username=username).exists():
+                raise ValidationError("Este nombre de usuario ya está en uso.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not email:
+            raise ValidationError("El correo electrónico es obligatorio.")
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            raise ValidationError("Ingrese un correo electrónico válido.")
+        
+        if self.instance.pk:
+            if User.objects.exclude(pk=self.instance.pk).filter(email=email).exists():
+                raise ValidationError("Este correo electrónico ya está en uso.")
+        else:
+            if User.objects.filter(email=email).exists():
+                raise ValidationError("Este correo electrónico ya está en uso.")
+        return email
+
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name', '').strip()
+        if not first_name:
+            raise ValidationError("El nombre es obligatorio.")
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', first_name):
+            raise ValidationError("El nombre solo puede contener letras.")
+        return first_name
+
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name', '').strip()
+        if not last_name:
+            raise ValidationError("El apellido es obligatorio.")
+        if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', last_name):
+            raise ValidationError("El apellido solo puede contener letras.")
+        return last_name
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password', '')
+        if self.is_edit and not password:
+            return password
+        
+        if not password:
+            if not self.is_edit:
+                raise ValidationError("La contraseña es obligatoria.")
+            return password
+            
+        if len(password) < 8:
+            raise ValidationError("La contraseña debe tener al menos 8 caracteres.")
+        if len(password) > 20:
+            raise ValidationError("La contraseña no debe tener más de 20 caracteres.")
+        if not re.search(r'[A-Z]', password):
+            raise ValidationError("La contraseña debe contener al menos una letra mayúscula.")
+        if not re.search(r'[a-z]', password):
+            raise ValidationError("La contraseña debe contener al menos una letra minúscula.")
+        if not re.search(r'[0-9]', password):
+            raise ValidationError("La contraseña debe contener al menos un número.")
+        return password
+
     def clean(self):
         cleaned = super().clean()
         p1 = cleaned.get("password")
         p2 = cleaned.get("password2")
-        if p1 and p2 and p1 != p2:
-            self.add_error("password2", "Las contraseñas no coinciden.")
+        
+        if not self.is_edit:
+            if p1 and p2 and p1 != p2:
+                self.add_error("password2", "Las contraseñas no coinciden.")
+        else:
+            if p1 or p2:
+                if p1 != p2:
+                    self.add_error("password2", "Las contraseñas no coinciden.")
         return cleaned
 
 class PerfilForm(forms.ModelForm):
@@ -37,13 +125,93 @@ class PerfilForm(forms.ModelForm):
         model = Perfil
         fields = ["run", "telefono", "direccion", "rol"]
         widgets = {
-            "run":       forms.TextInput(attrs={"class": "form-control", "placeholder": "RUN/DNI"}),
+            "run":       forms.TextInput(attrs={"class": "form-control", "placeholder": "12345678-9"}),
             "telefono":  forms.TextInput(attrs={"class": "form-control", "placeholder": "Ej: +56 9 1234 5678"}),
             "direccion": forms.TextInput(attrs={"class": "form-control", "placeholder": "Calle, número, ciudad"}),
             "rol":       forms.Select(attrs={"class": "form-select"}),
         }
 
+    def validar_rut_chileno(self, rut):
+        """Valida formato y dígito verificador de RUT chileno. Acepta k o K"""
+        # Normalizar: convertir a mayúsculas y quitar puntos y guiones
+        rut = rut.upper().replace(".", "").replace("-", "").strip()
+        
+        # Validar formato: 7-8 dígitos seguidos de número o K
+        if not re.match(r'^\d{7,8}[0-9Kk]$', rut, re.IGNORECASE):
+            return False
+        
+        rut_numeros = rut[:-1]
+        dv = rut[-1]
+        
+        if not rut_numeros.isdigit():
+            return False
+        
+        reversed_digits = map(int, reversed(rut_numeros))
+        factors = [2, 3, 4, 5, 6, 7]
+        s = sum(d * factors[i % 6] for i, d in enumerate(reversed_digits))
+        resto = s % 11
+        dv_calculado = 11 - resto
+        
+        if dv_calculado == 11:
+            dv_esperado = '0'
+        elif dv_calculado == 10:
+            dv_esperado = 'K'
+        else:
+            dv_esperado = str(dv_calculado)
+        
+        return dv == dv_esperado
+
+    def clean_run(self):
+        run = self.cleaned_data.get('run', '').strip()
+        if not run:
+            raise ValidationError("El RUN/DNI es obligatorio.")
+        
+        # Validar RUT chileno
+        if not self.validar_rut_chileno(run):
+            raise ValidationError("RUT inválido. Formato: 12345678-9")
+        
+        # Normalizar formato
+        run_limpio = run.upper().replace(".", "").replace("-", "").strip()
+        run_formateado = f"{run_limpio[:-1]}-{run_limpio[-1]}"
+        
+        # Verificar unicidad
+        if self.instance.pk:
+            if Perfil.objects.exclude(pk=self.instance.pk).filter(run=run_formateado).exists():
+                raise ValidationError("Este RUT ya está registrado.")
+        else:
+            if Perfil.objects.filter(run=run_formateado).exists():
+                raise ValidationError("Este RUT ya está registrado.")
+        
+        return run_formateado
+
+    def clean_telefono(self):
+        telefono = self.cleaned_data.get('telefono', '').strip()
+        if telefono and not re.match(r'^[\d\s\+\-\(\)]+$', telefono):
+            raise ValidationError("El teléfono solo puede contener números y los símbolos +, -, (, ).")
+        return telefono
+
 class PerfilAuthForm(AuthenticationForm):
+    username = forms.CharField(
+        label="Usuario",
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de usuario"})
+    )
+    password = forms.CharField(
+        label="Contraseña",
+        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Contraseña"})
+    )
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username', '').strip()
+        if not username:
+            raise ValidationError("El nombre de usuario es obligatorio.")
+        return username
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password', '')
+        if not password:
+            raise ValidationError("La contraseña es obligatoria.")
+        return password
+
     def confirm_login_allowed(self, user):
         try:
             perfil = user.perfil
@@ -63,6 +231,12 @@ class EstudianteForm(forms.ModelForm):
             "curso": forms.Select(attrs={"class": "form-select"}),
             "fecha_ingreso": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
         }
+
+    def clean_fecha_ingreso(self):
+        fecha = self.cleaned_data.get('fecha_ingreso')
+        if fecha and fecha > date.today():
+            raise ValidationError("La fecha de ingreso no puede ser futura.")
+        return fecha
 
 class SeleccionarActividadForm(forms.Form):
     disciplina = forms.ModelChoiceField(
@@ -120,6 +294,19 @@ class DisciplinaForm(forms.ModelForm):
             'placeholder': 'Describe la disciplina...'
         })
 
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise ValidationError("El nombre de la disciplina es obligatorio.")
+        
+        if self.instance.pk:
+            if Disciplina.objects.exclude(pk=self.instance.pk).filter(nombre=nombre).exists():
+                raise ValidationError("Ya existe una disciplina con este nombre.")
+        else:
+            if Disciplina.objects.filter(nombre=nombre).exists():
+                raise ValidationError("Ya existe una disciplina con este nombre.")
+        return nombre
+
 
 class ActividadDeportivaForm(forms.ModelForm):
     class Meta:
@@ -132,6 +319,26 @@ class ActividadDeportivaForm(forms.ModelForm):
             'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'lugar': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Gimnasio Principal'}),
         }
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre', '').strip()
+        if not nombre:
+            raise ValidationError("El nombre de la actividad es obligatorio.")
+        return nombre
+
+    def clean_fecha_inicio(self):
+        fecha_inicio = self.cleaned_data.get('fecha_inicio')
+        if not fecha_inicio:
+            raise ValidationError("La fecha de inicio es obligatoria.")
+        if fecha_inicio < date.today():
+            raise ValidationError("La fecha de inicio no puede ser anterior a hoy.")
+        return fecha_inicio
+
+    def clean_lugar(self):
+        lugar = self.cleaned_data.get('lugar', '').strip()
+        if not lugar:
+            raise ValidationError("El lugar es obligatorio.")
+        return lugar
 
     def clean(self):
         cleaned = super().clean()
@@ -156,7 +363,6 @@ class InscripcionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtrar solo estudiantes activos
         self.fields['estudiante'].queryset = (
             Estudiante.objects
             .filter(perfil__activo=True)
