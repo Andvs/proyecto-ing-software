@@ -1,4 +1,5 @@
 # usuarios/views.py
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F
@@ -326,20 +327,33 @@ def asistencia_marcar(request, actividad_id: int):
     )
     disciplina = actividad.disciplina
 
-    inscripciones = (
-        Inscripcion.objects
-        .select_related("estudiante__perfil__user", "disciplina")
-        .filter(
-            disciplina=disciplina,
-            estado="ACTIVA",
-            estudiante__perfil__activo=True
+# ▬▬▬▬▬ TORNEO → usar estudiantes seleccionados ▬▬▬▬▬
+    if actividad.tipo == "torneo":
+        estudiantes = actividad.estudiantes.select_related(
+            "perfil__user"
+        ).filter(
+            perfil__activo=True
+        ).order_by(
+            "perfil__user__last_name",
+            "perfil__user__first_name"
         )
-        .order_by(
-            "estudiante__perfil__user__last_name",
-            "estudiante__perfil__user__first_name"
+
+    else:
+        # ▬▬▬▬ NORMAL → usar inscripciones activas ▬▬▬▬
+        inscripciones = (
+            Inscripcion.objects
+            .select_related("estudiante__perfil__user", "disciplina")
+            .filter(
+                disciplina=disciplina,
+                estado="ACTIVA",
+                estudiante__perfil__activo=True
+            )
+            .order_by(
+                "estudiante__perfil__user__last_name",
+                "estudiante__perfil__user__first_name"
+            )
         )
-    )
-    estudiantes = [insc.estudiante for insc in inscripciones]
+        estudiantes = [insc.estudiante for insc in inscripciones]
 
     fecha_param = (request.GET.get('fecha') or request.GET.get('date') or None)
     if fecha_param:
@@ -540,16 +554,56 @@ def eliminar_disciplina(request, pk):
 # -----------------------------------------------------
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin', 'Coordinador Deportivo'])
 def crear_actividad(request):
-    if request.method == 'POST':
+
+    print("\n========== DEBUG ==========")
+    print("POST RECIBIDO:", request.POST)
+    print("===========================\n")
+
+    tipo = request.POST.get("tipo", "")
+    disciplina_id = request.POST.get("disciplina")
+
+    estudiantes_filtrados = Estudiante.objects.none()
+
+    # Si es torneo y tiene disciplina → filtrar
+    if tipo == "torneo" and disciplina_id:
+        estudiantes_filtrados = Estudiante.objects.filter(
+            inscripciones__disciplina_id=disciplina_id,
+            inscripciones__estado="ACTIVA"
+        ).distinct()
+
+        print("ESTUDIANTES FILTRADOS:", estudiantes_filtrados)
+
+    # Si POST
+    if request.method == "POST":
         form = ActividadDeportivaForm(request.POST)
+
+        # ← ← ← EL FIX IMPORTANTE
+        form.fields["estudiantes"].queryset = estudiantes_filtrados
+
         if form.is_valid():
-            form.save()
-            messages.success(request, '¡Actividad deportiva registrada con éxito!')
-            return redirect('lista_actividades')
+            actividad = form.save()
+
+            if tipo == "torneo":
+                seleccionados = form.cleaned_data["estudiantes"]
+                print("ESTUDIANTES SELECCIONADOS:", seleccionados)
+
+            messages.success(request, "Actividad registrada correctamente.")
+            return redirect("lista_actividades")
+
+        else:
+            print("\n❌ FORMULARIO INVÁLIDO:")
+            print(form.errors)
+            print("=======================\n")
+
     else:
         form = ActividadDeportivaForm()
-    return render(request, 'actividades/crear.html', {'form': form})
 
+    # Set queryset cuando GET
+    form.fields["estudiantes"].queryset = estudiantes_filtrados
+
+    return render(request, "actividades/crear.html", {
+        "form": form,
+    })
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin', 'Coordinador Deportivo'])
 def lista_actividades(request):
@@ -670,3 +724,16 @@ def eliminar_inscripcion(request, pk):
     except Exception as e:
         messages.error(request, f'Error al eliminar la inscripción: {e}')
     return redirect('lista_inscripciones')
+
+def obtener_estudiantes_por_disciplina(request, disciplina_id):
+    estudiantes = Estudiante.objects.filter(
+        inscripciones__disciplina_id=disciplina_id,
+        inscripciones__estado="ACTIVA"
+    ).distinct()
+
+    data = [
+        {"id": est.id, "nombre": est.perfil.user.get_full_name()}
+        for est in estudiantes
+    ]
+
+    return JsonResponse({"estudiantes": data})

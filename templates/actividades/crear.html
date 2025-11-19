@@ -2,69 +2,121 @@
 {% block titulo %}Registrar Actividad Deportiva{% endblock %}
 
 {% block contenido %}
+
 <div class="container mt-5">
   <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
       <div class="card shadow-lg">
+
         <div class="card-header text-center py-3">
           <h3 class="fw-bold mb-0">Registrar Actividad Deportiva</h3>
         </div>
+
         <div class="card-body p-4">
 
           {% if messages %}
             {% for message in messages %}
-              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-              </div>
+              <div class="alert alert-{{ message.tags }}">{{ message }}</div>
             {% endfor %}
           {% endif %}
 
           <form method="post" novalidate>
             {% csrf_token %}
 
-            <div class="mb-3">
-              {{ form.nombre.label_tag }}
-              {{ form.nombre }}
-              {% for e in form.nombre.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-            </div>
+            {{ form.nombre.label_tag }}  
+            {{ form.nombre }} <br>
 
-            <div class="mb-3">
-              {{ form.disciplina.label_tag }}
-              {{ form.disciplina }}
-              {% for e in form.disciplina.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-            </div>
+            {{ form.disciplina.label_tag }}
+            {{ form.disciplina }} <br>
 
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                {{ form.fecha_inicio.label_tag }}
-                {{ form.fecha_inicio }}
-                {% for e in form.fecha_inicio.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            <!-- SELECT TIPO -->
+            <label for="id_tipo" class="form-label">Tipo de actividad</label>
+            <select id="id_tipo" name="tipo" class="form-select">
+              <option value="normal" {% if tipo == "normal" %}selected{% endif %}>Normal</option>
+              <option value="torneo" {% if tipo == "torneo" %}selected{% endif %}>Torneo</option>
+            </select>
+
+            <br>
+
+            {{ form.fecha_inicio.label_tag }}
+            {{ form.fecha_inicio }}
+
+            {{ form.fecha_fin.label_tag }}
+            {{ form.fecha_fin }}
+
+            {{ form.lugar.label_tag }}
+            {{ form.lugar }}
+
+            <!-- LISTA DE ESTUDIANTES -->
+            <div id="estudiantes_box" style="display:none; margin-top:20px;">
+              <label class="form-label fw-bold">Seleccionar estudiantes</label>
+              <div id="lista_estudiantes" class="border p-3 rounded">
+                Selecciona una disciplina y tipo "Torneo" para ver estudiantes.
               </div>
-
-              <div class="col-md-6 mb-3">
-                {{ form.fecha_fin.label_tag }}
-                {{ form.fecha_fin }}
-                <div class="form-text small">Opcional</div>
-                {% for e in form.fecha_fin.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-              </div>
-            </div>
-
-            <div class="mb-3">
-              {{ form.lugar.label_tag }}
-              {{ form.lugar }}
-              {% for e in form.lugar.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
             </div>
 
             <div class="text-center mt-4">
-              <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold">Guardar</button>
-              <a href="{% url 'lista_actividades' %}" class="btn btn-outline-secondary btn-lg px-4 ms-2">Cancelar</a>
+              <button type="submit" class="btn btn-primary btn-lg">Guardar</button>
+              <a href="{% url 'lista_actividades' %}" class="btn btn-outline-secondary btn-lg">Cancelar</a>
             </div>
-            
+
           </form>
+
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const tipoSelect = document.getElementById("id_tipo");
+    const disciplinaSelect = document.getElementById("id_disciplina");
+    const box = document.getElementById("estudiantes_box");
+    const lista = document.getElementById("lista_estudiantes");
+
+    function cargarEstudiantes() {
+        const tipo = tipoSelect.value;
+        const disc = disciplinaSelect.value;
+
+        if (tipo !== "torneo" || !disc) {
+            box.style.display = "none";
+            lista.innerHTML = "Selecciona una disciplina y tipo 'Torneo' para ver estudiantes.";
+            return;
+        }
+
+        fetch(`/obtener-estudiantes/${disc}/`)
+            .then(r => r.json())
+            .then(data => {
+                box.style.display = "block";
+
+                if (!data.estudiantes.length) {
+                    lista.innerHTML = "No hay estudiantes inscritos en esta disciplina.";
+                    return;
+                }
+
+                lista.innerHTML = "";
+                data.estudiantes.forEach(est => {
+                    lista.innerHTML += `
+                        <div>
+                            <label>
+                                <input type="checkbox" name="estudiantes" value="${est.id}">
+                                ${est.nombre}
+                            </label>
+                        </div>
+                    `;
+                });
+            })
+            .catch(e => {
+                console.log("ERROR cargando estudiantes:", e);
+            });
+    }
+
+    tipoSelect.addEventListener("change", cargarEstudiantes);
+    disciplinaSelect.addEventListener("change", cargarEstudiantes);
+
+});
+</script>
+
 {% endblock %}

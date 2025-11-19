@@ -44,13 +44,27 @@ class Disciplina(models.Model):
 
 
 class ActividadDeportiva(models.Model):
+    TIPO_CHOICES = [
+        ("normal", "Normal"),
+        ("torneo", "Torneo"),
+    ]
+
     nombre = models.CharField(max_length=50)
     disciplina = models.ForeignKey(Disciplina, on_delete=models.CASCADE ,null=True, blank=True)
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField(null=True, blank=True)
     lugar = models.CharField(max_length=100)
-    def __str__(self): return f"{self.nombre} ({self.disciplina.nombre})"
-    class Meta: ordering = ["-fecha_inicio"]
+
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default="normal")
+
+    # ← AQUI: participantes del torneo
+    estudiantes = models.ManyToManyField(Estudiante, blank=True)
+
+    def __str__(self):
+        return f"{self.nombre} ({self.disciplina.nombre})"
+
+    class Meta:
+        ordering = ["-fecha_inicio"]
 
 
 # NUEVO: Inscripción Estudiante↔Disciplina
@@ -125,3 +139,14 @@ class Rendimiento(models.Model):
 
     def __str__(self):
         return f"{self.estudiante.perfil.user.username} - {self.disciplina.nombre} ({self.puntaje})"
+
+class ParticipanteActividad(models.Model):
+    actividad = models.ForeignKey(ActividadDeportiva, on_delete=models.CASCADE, related_name="participantes")
+    estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('actividad', 'estudiante')  # evita duplicados
+
+    def __str__(self):
+        return f"{self.estudiante.perfil.user.username} → {self.actividad.nombre}"

@@ -309,17 +309,48 @@ class DisciplinaForm(forms.ModelForm):
 
 
 class ActividadDeportivaForm(forms.ModelForm):
+    estudiantes = forms.ModelMultipleChoiceField(
+        queryset=Estudiante.objects.none(),     # ← Importante
+        required=False,
+        widget=forms.CheckboxSelectMultiple
+    )
+
     class Meta:
         model = ActividadDeportiva
-        fields = ['nombre', 'disciplina', 'fecha_inicio', 'fecha_fin', 'lugar']
+        fields = [
+            'nombre', 'disciplina', 'fecha_inicio', 'fecha_fin',
+            'lugar', 'tipo', 'estudiantes'
+        ]
         widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Entrenamiento de Voleibol'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'disciplina': forms.Select(attrs={'class': 'form-select'}),
             'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'lugar': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Gimnasio Principal'}),
+            'lugar': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        disciplina_id = None
+
+        # 1. Extraer disciplina del POST o initial
+        if "data" in kwargs and kwargs["data"].get("disciplina"):
+            disciplina_id = kwargs["data"].get("disciplina")
+        elif "initial" in kwargs and kwargs["initial"].get("disciplina"):
+            disciplina_id = kwargs["initial"].get("disciplina")
+
+        super().__init__(*args, **kwargs)
+
+        # 2. Actualizar queryset basado en la disciplina
+        if disciplina_id:
+            self.fields['estudiantes'].queryset = Estudiante.objects.filter(
+                inscripciones__disciplina_id=disciplina_id,
+                inscripciones__estado="ACTIVA",
+            ).distinct()
+        else:
+            self.fields['estudiantes'].queryset = Estudiante.objects.none()
+
+    # Tus validadores originales
     def clean_nombre(self):
         nombre = self.cleaned_data.get('nombre', '').strip()
         if not nombre:
@@ -344,10 +375,10 @@ class ActividadDeportivaForm(forms.ModelForm):
         cleaned = super().clean()
         fecha_inicio = cleaned.get('fecha_inicio')
         fecha_fin = cleaned.get('fecha_fin')
-        
+
         if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
             self.add_error('fecha_fin', 'La fecha de fin no puede ser anterior a la fecha de inicio.')
-        
+
         return cleaned
 
 
@@ -369,3 +400,10 @@ class InscripcionForm(forms.ModelForm):
             .select_related('perfil__user')
             .order_by('perfil__user__last_name', 'perfil__user__first_name')
         )
+
+class SeleccionarAlumnosForm(forms.Form):
+    estudiantes = forms.ModelMultipleChoiceField(
+        queryset=Estudiante.objects.all().order_by("perfil__user__username"),
+        widget=forms.CheckboxSelectMultiple,
+        required=True
+    )

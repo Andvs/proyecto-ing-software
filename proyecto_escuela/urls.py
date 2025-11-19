@@ -28,6 +28,7 @@ urlpatterns = [
     path('actividades/', v.lista_actividades, name='lista_actividades'),
     path('actividades/editar/<int:pk>/', v.editar_actividad, name='editar_actividad'),
     path('actividades/eliminar/<int:pk>/', v.eliminar_actividad, name='eliminar_actividad'),
+    path('obtener-estudiantes/<int:disciplina_id>/', v.obtener_estudiantes_por_disciplina, name='obtener_estudiantes'),
     
     # --- Inscripciones ---
     path('inscripciones/crear/', v.crear_inscripcion, name='crear_inscripcion'),
