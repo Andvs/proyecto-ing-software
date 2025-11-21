@@ -58,4 +58,40 @@
     </div>
   </div>
 </div>
+  <div class="card shadow-sm mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Ausentes ({{ ausentes_count }})</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Usuario</th>
+            <th>Nombre</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for est in ausentes %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ est.perfil.user.username }}</td>
+            <td>
+              {% with u=est.perfil.user %}
+                {{ u.get_full_name|default:u.username }}
+              {% endwith %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-center text-muted py-4">
+              No hay ausentes en esta sesión.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 {% endblock %}

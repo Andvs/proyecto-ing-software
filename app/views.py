@@ -266,6 +266,14 @@ def asistencia_listar(request):
     except ValueError:
         messages.error(request, "Formato de fechas inválido (usa AAAA-MM-DD).")
         return redirect('asistencia_listar')
+    
+    # ==== Validación rango consistente ====
+    if filtros['desde'] and filtros['hasta'] and filtros['desde'] > filtros['hasta']:
+        messages.error(
+            request,
+            "El rango de fechas es inconsistente: 'Desde' no puede ser mayor que 'Hasta'."
+        )
+        return redirect('asistencia_listar')
 
     sesiones = _query_sesiones_asistencia(filtros)
 
@@ -284,17 +292,62 @@ def asistencia_ver_estudiantes(request, actividad_id: int, fecha: str):
     actividad = get_object_or_404(ActividadDeportiva, pk=actividad_id)
     sesion = get_object_or_404(SesionAsistencia, actividad=actividad, fecha=fecha_date)
 
-    presentes_qs = (sesion.detalles
-                    .select_related('usuario__user')
-                    .order_by('usuario__user__last_name', 'usuario__user__first_name'))
+    # Presentes (tal como estaba)
+    presentes_qs = (
+        sesion.detalles
+        .select_related('usuario__user')
+        .order_by('usuario__user__last_name', 'usuario__user__first_name')
+    )
+
+    presentes_count = presentes_qs.count()
+    presentes_perfil_ids = set(
+        presentes_qs.values_list('usuario_id', flat=True)
+    )
+
+    # ==== Estudiantes esperados según tipo de actividad ====
+    if actividad.tipo == "torneo":
+        # Usa los estudiantes asignados al torneo
+        estudiantes_qs = (
+            actividad.estudiantes
+            .select_related("perfil__user")
+            .filter(perfil__activo=True)
+            .order_by("perfil__user__last_name", "perfil__user__first_name")
+        )
+        estudiantes = list(estudiantes_qs)
+    else:
+        # Usa inscripciones activas de la disciplina
+        inscripciones = (
+            Inscripcion.objects
+            .select_related("estudiante__perfil__user", "disciplina")
+            .filter(
+                disciplina=actividad.disciplina,
+                estado="ACTIVA",
+                estudiante__perfil__activo=True,
+            )
+            .order_by(
+                "estudiante__perfil__user__last_name",
+                "estudiante__perfil__user__first_name",
+            )
+        )
+        estudiantes = [insc.estudiante for insc in inscripciones]
+
+    # ==== Ausentes: estudiantes cuyo perfil no está en la lista de presentes ====
+    ausentes = [
+        est for est in estudiantes
+        if est.perfil_id not in presentes_perfil_ids
+    ]
+    ausentes_count = len(ausentes)
 
     return render(request, 'asistencia/estudiantes.html', {
         'actividad': actividad,
         'fecha': fecha_date,
         'sesion': sesion,
         'detalles': presentes_qs,
-        'presentes_count': presentes_qs.count(),
+        'presentes_count': presentes_count,
+        'ausentes': ausentes,
+        'ausentes_count': ausentes_count,
     })
+
 
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
@@ -319,6 +372,9 @@ def asistencia_toggle_activa(request, actividad_id: int, fecha: str):
     return redirect(request.POST.get("next") or "asistencia_listar")
 
 
+
+# … tus otros imports …
+
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])
 def asistencia_marcar(request, actividad_id: int):
     actividad = get_object_or_404(
@@ -327,34 +383,47 @@ def asistencia_marcar(request, actividad_id: int):
     )
     disciplina = actividad.disciplina
 
-# ▬▬▬▬▬ TORNEO → usar estudiantes seleccionados ▬▬▬▬▬
-    if actividad.tipo == "torneo":
-        estudiantes = actividad.estudiantes.select_related(
-            "perfil__user"
-        ).filter(
-            perfil__activo=True
-        ).order_by(
-            "perfil__user__last_name",
-            "perfil__user__first_name"
-        )
+    # ==== HOY: siempre en horario local (America/Santiago) ====
+    hoy = timezone.localdate()   # <--- USAMOS ESTO COMO "hoy"
 
+    # ==== NO permitir asistencia antes de que comience la actividad ====
+    if actividad.fecha_inicio and hoy < actividad.fecha_inicio:
+        messages.error(
+            request,
+            f"No puedes registrar asistencia porque la actividad aún no comienza "
+            f"(inicio: {actividad.fecha_inicio:%d-%m-%Y})."
+        )
+        return redirect("asistencia_listar")
+
+    # ▬▬▬▬▬ OBTENER ESTUDIANTES ▬▬▬▬▬
+    if actividad.tipo == "torneo":
+        estudiantes_qs = (
+            actividad.estudiantes
+            .select_related("perfil__user")
+            .filter(perfil__activo=True)
+            .order_by(
+                "perfil__user__last_name",
+                "perfil__user__first_name",
+            )
+        )
+        estudiantes = list(estudiantes_qs)
     else:
-        # ▬▬▬▬ NORMAL → usar inscripciones activas ▬▬▬▬
         inscripciones = (
             Inscripcion.objects
             .select_related("estudiante__perfil__user", "disciplina")
             .filter(
                 disciplina=disciplina,
                 estado="ACTIVA",
-                estudiante__perfil__activo=True
+                estudiante__perfil__activo=True,
             )
             .order_by(
                 "estudiante__perfil__user__last_name",
-                "estudiante__perfil__user__first_name"
+                "estudiante__perfil__user__first_name",
             )
         )
         estudiantes = [insc.estudiante for insc in inscripciones]
 
+    # ---------------- FECHA DE LA SESIÓN ----------------
     fecha_param = (request.GET.get('fecha') or request.GET.get('date') or None)
     if fecha_param:
         try:
@@ -363,40 +432,76 @@ def asistencia_marcar(request, actividad_id: int):
             messages.error(request, "Fecha inválida (usa AAAA-MM-DD).")
             return redirect("asistencia_listar")
     else:
-        fecha_obj = timezone.localdate()
+        # si no viene parámetro, usamos el "hoy" local
+        fecha_obj = hoy
 
+    # Validar que la fecha de sesión esté dentro del rango de la actividad
+    inicio = actividad.fecha_inicio
+    fin = actividad.fecha_fin  # puede ser None
+
+    if inicio and fecha_obj < inicio:
+        messages.error(
+            request,
+            f"La asistencia no puede marcarse antes del inicio de la actividad "
+            f"({inicio:%d-%m-%Y})."
+        )
+        return redirect("asistencia_listar")
+
+    if fin and fecha_obj > fin:
+        messages.error(
+            request,
+            f"La asistencia no puede marcarse después del fin de la actividad "
+            f"({fin:%d-%m-%Y})."
+        )
+        return redirect("asistencia_listar")
+
+    # Quién marca la asistencia
     try:
         marcaje_por = request.user.perfil
     except Perfil.DoesNotExist:
         marcaje_por = None
 
-    sesion, _created = SesionAsistencia.objects.get_or_create(
-        actividad=actividad,
-        defaults={
-            'fecha': fecha_obj,
-            'marcaje_por': marcaje_por,
-            'entrenador': (
-                marcaje_por if (marcaje_por and marcaje_por.rol.nombre == "Entrenador")
-                else None
-            ),
-        }
-    )
+    # En GET: solo buscamos sesión existente, NO la creamos
+    sesion = SesionAsistencia.objects.filter(actividad=actividad).first()
 
-    if sesion.fecha != fecha_obj:
-        sesion.fecha = fecha_obj
-        if sesion.marcaje_por is None:
-            sesion.marcaje_por = marcaje_por
-        if sesion.entrenador is None and (marcaje_por and marcaje_por.rol.nombre == "Entrenador"):
-            sesion.entrenador = marcaje_por
-        sesion.save(update_fields=['fecha', 'marcaje_por', 'entrenador', 'actualizado_en'])
-
+    # ---------------- GUARDAR ASISTENCIA (POST) ----------------
     if request.method == "POST":
         if not estudiantes:
             messages.info(request, "No hay estudiantes inscritos para esta disciplina.")
             return redirect("asistencia_seleccionar")
 
+        # Crear sesión SOLO cuando se pulsa "Guardar asistencia"
+        if sesion is None:
+            sesion = SesionAsistencia.objects.create(
+                actividad=actividad,
+                fecha=fecha_obj,
+                marcaje_por=marcaje_por,
+                entrenador=(
+                    marcaje_por if (marcaje_por and marcaje_por.rol.nombre == "Entrenador")
+                    else None
+                ),
+            )
+        else:
+            # Actualizar campos si estaban vacíos / distinta fecha
+            campos_modificados = []
+            if sesion.fecha != fecha_obj:
+                sesion.fecha = fecha_obj
+                campos_modificados.append("fecha")
+            if sesion.marcaje_por is None and marcaje_por is not None:
+                sesion.marcaje_por = marcaje_por
+                campos_modificados.append("marcaje_por")
+            if sesion.entrenador is None and (marcaje_por and marcaje_por.rol.nombre == "Entrenador"):
+                sesion.entrenador = marcaje_por
+                campos_modificados.append("entrenador")
+            if campos_modificados:
+                campos_modificados.append("actualizado_en")
+                sesion.save(update_fields=campos_modificados)
+
+        # IDs de estudiantes presentes desde el formulario
         presentes_ids = set(map(int, request.POST.getlist("presentes")))
+
         with transaction.atomic():
+            # Borrar marcajes anteriores de esta sesión
             Asistencia.objects.filter(sesion=sesion).delete()
 
             ahora = timezone.now()
@@ -419,18 +524,25 @@ def asistencia_marcar(request, actividad_id: int):
         )
         return redirect("asistencia_listar")
 
-    presentes_ids_fecha = set(
-        Asistencia.objects.filter(sesion=sesion)
-        .values_list("usuario_id", flat=True)
-    )
+    # ---------------- VISTA (GET) ----------------
+    if sesion:
+        presentes_ids_fecha = set(
+            Asistencia.objects.filter(sesion=sesion)
+            .values_list("usuario_id", flat=True)
+        )
+        fecha_contexto = sesion.fecha
+    else:
+        presentes_ids_fecha = set()
+        fecha_contexto = fecha_obj
 
     return render(request, "asistencia/marcar.html", {
         "actividad": actividad,
         "disciplina": disciplina,
         "estudiantes": estudiantes,
         "presentes_ids_hoy": presentes_ids_fecha,
-        "fecha_obj": sesion.fecha,
+        "fecha_obj": fecha_contexto,
     })
+
 
 
 @rol_requerido(roles_permitidos=['Entrenador', 'Admin'])

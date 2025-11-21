@@ -49,9 +49,6 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'proyecto_escuela.urls'
 
 
-USE_TZ = True
-TIME_ZONE = "America/Santiago"
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -116,11 +113,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
+TIME_ZONE = 'America/Santiago'
 
 
 # Static files (CSS, JavaScript, Images)
