@@ -11,30 +11,78 @@ class UserForm(forms.ModelForm):
     password = forms.CharField(
         label="Contraseña",
         required=False,
-        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Ingresa una contraseña"})
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Ingresa una contraseña",
+                "maxlength": 20,  # límite visual
+            }
+        ),
     )
     password2 = forms.CharField(
         label="Repite la contraseña",
         required=False,
-        widget=forms.PasswordInput(attrs={"class": "form-control", "placeholder": "Repite la contraseña"})
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Repite la contraseña",
+                "maxlength": 20,  # límite visual
+            }
+        ),
     )
 
     class Meta:
         model = User
         fields = ["username", "email", "password", "password2", "first_name", "last_name"]
         widgets = {
-            "username":   forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre de usuario"}),
-            "email":      forms.EmailInput(attrs={"class": "form-control", "placeholder": "correo@dominio.com"}),
-            "first_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "Nombre(s)"}),
-            "last_name":  forms.TextInput(attrs={"class": "form-control", "placeholder": "Apellidos"}),
+            "username": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Nombre de usuario",
+                    "maxlength": 20,   # límite visual
+                }
+            ),
+            "email": forms.EmailInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "correo@dominio.com",
+                    "maxlength": 150,  # límite visual
+                }
+            ),
+            "first_name": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Nombre(s)",
+                    "maxlength": 50,   # límite visual
+                }
+            ),
+            "last_name": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Apellidos",
+                    "maxlength": 50,   # límite visual
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
         self.is_edit = kwargs.pop('is_edit', False)
         super().__init__(*args, **kwargs)
+
         if not self.is_edit:
             self.fields['password'].required = True
             self.fields['password2'].required = True
+
+        # 🔹 Refuerzo por si se sobreescriben los widgets en otro lado
+        limits = {
+            "username": 20,
+            "email": 150,
+            "first_name": 50,
+            "last_name": 50,
+        }
+        for nombre_campo, maxlen in limits.items():
+            if nombre_campo in self.fields:
+                self.fields[nombre_campo].widget.attrs["maxlength"] = maxlen
 
     def clean_username(self):
         username = self.cleaned_data.get('username', '').strip()
@@ -42,6 +90,9 @@ class UserForm(forms.ModelForm):
             raise ValidationError("El nombre de usuario es obligatorio.")
         if len(username) < 3:
             raise ValidationError("El nombre de usuario debe tener al menos 3 caracteres.")
+        # 🔹 límite real en backend
+        if len(username) > 20:
+            raise ValidationError("El nombre de usuario no puede tener más de 20 caracteres.")
         if not re.match(r'^[a-zA-Z0-9_]+$', username):
             raise ValidationError("El nombre de usuario solo puede contener letras, números y guiones bajos.")
         
@@ -57,6 +108,8 @@ class UserForm(forms.ModelForm):
         email = self.cleaned_data.get('email', '').strip().lower()
         if not email:
             raise ValidationError("El correo electrónico es obligatorio.")
+        if len(email) > 150:
+            raise ValidationError("El correo electrónico no puede tener más de 150 caracteres.")
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             raise ValidationError("Ingrese un correo electrónico válido.")
         
@@ -72,6 +125,8 @@ class UserForm(forms.ModelForm):
         first_name = self.cleaned_data.get('first_name', '').strip()
         if not first_name:
             raise ValidationError("El nombre es obligatorio.")
+        if len(first_name) > 50:
+            raise ValidationError("El nombre no puede tener más de 50 caracteres.")
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', first_name):
             raise ValidationError("El nombre solo puede contener letras.")
         return first_name
@@ -80,6 +135,8 @@ class UserForm(forms.ModelForm):
         last_name = self.cleaned_data.get('last_name', '').strip()
         if not last_name:
             raise ValidationError("El apellido es obligatorio.")
+        if len(last_name) > 50:
+            raise ValidationError("El apellido no puede tener más de 50 caracteres.")
         if not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$', last_name):
             raise ValidationError("El apellido solo puede contener letras.")
         return last_name
@@ -106,19 +163,6 @@ class UserForm(forms.ModelForm):
             raise ValidationError("La contraseña debe contener al menos un número.")
         return password
 
-    def clean(self):
-        cleaned = super().clean()
-        p1 = cleaned.get("password")
-        p2 = cleaned.get("password2")
-        
-        if not self.is_edit:
-            if p1 and p2 and p1 != p2:
-                self.add_error("password2", "Las contraseñas no coinciden.")
-        else:
-            if p1 or p2:
-                if p1 != p2:
-                    self.add_error("password2", "Las contraseñas no coinciden.")
-        return cleaned
 
 class PerfilForm(forms.ModelForm):
     class Meta:
